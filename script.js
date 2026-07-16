@@ -6,11 +6,16 @@ You are Vier, an expert AI 3D assistant.
 Your goal is to help the user build Three.js scenes.
 
 ## Interaction Rules:
-If you need to ask the user a question to clarify requirements, output EXACTLY this tag and nothing else:
+If you need to ask the user a question to clarify requirements, FIRST explain WHY you are asking, then output EXACTLY this tag and nothing else:
 <question>Your question here?</question>
 
-If you need the user to choose from multiple options, output EXACTLY this tag with valid JSON and nothing else:
+If you need the user to choose from multiple options, FIRST explain WHY you are asking, then output EXACTLY this tag with valid JSON and nothing else:
 <choose>[{"label":"Option 1"},{"label":"Option 2"},{"label":"Option 3"},{"label":"Option 4"}]</choose>
+
+## Asset Rules:
+If the user uploads assets (.glb, .png, etc), they are stored in the 'assets/' folder in the virtual file system.
+To load a 3D model, use: new GLTFLoader().load('assets/model.glb', ...)
+To load a texture, use: new THREE.TextureLoader().load('assets/texture.png', ...)
 
 ## Coding Rules:
 When in 'build' mode, always provide the complete, updated file content.
@@ -24,11 +29,10 @@ Example:
 const scene = new THREE.Scene();
 \`\`\`
 
-Example 2:
-\`\`\`html
-<!-- index.html -->
-<html>...</html>
-\`\`\`
+## Performance Auditing:
+If the user clicks "Audit", analyze the provided code for Three.js performance bottlenecks.
+Look for: Excessive draw calls (suggest InstancedMesh), heavy shadow maps, unoptimized geometries, memory leaks (dispose not called).
+Provide a clear report of issues, then output the fixed code.
 `;
 
 let appSettings = JSON.parse(localStorage.getItem('vier_settings')) || {
@@ -67,7 +71,8 @@ function showView(viewName) {
         editorView.classList.add('active');
         initThreeJS();
         setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
-        updateModelSelector(); // Sync model dropdown
+        updateModelSelector();
+        initDragAndDrop(); // Initialize drop listeners
     }
 }
 
@@ -109,7 +114,7 @@ function renderEmptyState() {
         <div id="chat-empty-state" class="chat-empty-state">
             <div class="empty-icon">3D</div>
             <h4>Start Building</h4>
-            <p>Ask Vier to generate 3D objects, lighting, or animations.</p>
+            <p>Ask Vier to generate 3D objects, drop .glb models, or audit code.</p>
             <div class="quick-prompts">
                 <button class="quick-prompt">Add a rotating cube</button>
                 <button class="quick-prompt">Add point lighting</button>
@@ -120,7 +125,7 @@ function renderEmptyState() {
     document.querySelectorAll('.quick-prompt').forEach(btn => {
         btn.addEventListener('click', () => {
             document.getElementById('prompt-input').value = btn.innerText;
-            document.getElementById('generate-btn').click();
+            runGeneration(btn.innerText);
         });
     });
 }
@@ -358,6 +363,59 @@ document.getElementById('deploy-gh-btn').addEventListener('click', async () => {
 });
 
 // ==========================================
+// DRAG & DROP ASSET CONTEXT (Feature 3)
+// ==========================================
+function initDragAndDrop() {
+    const editorLayout = document.querySelector('.editor-layout');
+    const dropOverlay = document.getElementById('drop-overlay');
+
+    editorLayout.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropOverlay.classList.remove('hidden');
+    });
+
+    editorLayout.addEventListener('dragleave', (e) => {
+        if (e.target === editorLayout) {
+            dropOverlay.classList.add('hidden');
+        }
+    });
+
+    editorLayout.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropOverlay.classList.add('hidden');
+        
+        const files = e.dataTransfer.files;
+        const project = getCurrentProject();
+        if (!project) return;
+
+        let uploadedAssets = [];
+        
+        for (let file of files) {
+            const path = `assets/${file.name}`;
+            const reader = new FileReader();
+            
+            await new Promise((resolve) => {
+                reader.onload = function(event) {
+                    project.files[path] = event.target.result; // Stores as Base64 Data URL
+                    uploadedAssets.push(path);
+                    resolve();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        saveProjects();
+        renderFileTree();
+        
+        if (uploadedAssets.length > 0) {
+            const promptText = `I uploaded the following assets: ${uploadedAssets.join(', ')}. Please add them to the scene.`;
+            document.getElementById('prompt-input').value = promptText;
+            runGeneration(promptText);
+        }
+    });
+}
+
+// ==========================================
 // CHAT & AI INTERACTION
 // ==========================================
 const modeBtns = document.querySelectorAll('.mode-btn');
@@ -370,7 +428,6 @@ modeBtns.forEach(btn => {
     });
 });
 
-// Basic Markdown formatter for chat UI
 function formatMarkdown(text) {
     let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => `<pre><code>${code.trim()}</code></pre>`);
@@ -400,7 +457,7 @@ function addMessage(text, sender, save = true) {
     if (questionMatch) {
         bubble.classList.remove('chat-bubble');
         bubble.classList.add('ai-interactive');
-        bubble.innerHTML = `<p>${questionMatch[1]}</p><input type="text" class="ai-input-field" placeholder="Type your answer..."><button class="btn btn-primary btn-sm" onclick="submitInteraction(this)">Submit</button>`;
+        bubble.innerHTML = `<p>${questionMatch[1]}</p><input type="text" class="ai-input-field" placeholder="Type your answer..." title="Type your answer here"><button class="btn btn-primary btn-sm" onclick="submitInteraction(this)" title="Submit answer">Submit</button>`;
     } else if (chooseMatch) {
         try {
             const options = JSON.parse(chooseMatch[1]);
@@ -408,7 +465,7 @@ function addMessage(text, sender, save = true) {
             bubble.classList.add('ai-interactive');
             let optionsHtml = '<div class="ai-options-grid">';
             options.forEach(opt => {
-                optionsHtml += `<button class="ai-option-btn" onclick="submitInteraction(this)">${opt.label}</button>`;
+                optionsHtml += `<button class="ai-option-btn" onclick="submitInteraction(this)" title="Click to choose this option">${opt.label}</button>`;
             });
             bubble.innerHTML = `<p>Please choose an option:</p>${optionsHtml}</div>`;
         } catch (e) { bubble.innerHTML = formatMarkdown(text); }
@@ -435,19 +492,60 @@ window.submitInteraction = function(element) {
     else responseText = element.innerText;
     
     container.remove();
-    addMessage(responseText, 'user');
-    setTimeout(() => document.getElementById('generate-btn').click(), 500);
+    runGeneration(responseText, true);
 }
 
-document.getElementById('generate-btn').addEventListener('click', async () => {
-    const promptInput = document.getElementById('prompt-input');
-    const prompt = promptInput.value.trim();
-    if (!prompt) return;
-    if (!appSettings.apiKey) return alert("Set API Key in settings.");
+// Generate Button Stop/Start Logic
+let isGenerating = false;
+let abortController = null;
 
-    addMessage(prompt, 'user');
-    promptInput.value = '';
+const generateBtn = document.getElementById('generate-btn');
+generateBtn.addEventListener('click', () => {
+    if (isGenerating) {
+        if (abortController) abortController.abort();
+        isGenerating = false;
+        updateGenerateBtnUI();
+    } else {
+        const promptInput = document.getElementById('prompt-input');
+        const prompt = promptInput.value.trim();
+        if (!prompt) return;
+        runGeneration(prompt);
+    }
+});
+
+// Performance Audit Button (Feature 5)
+document.getElementById('audit-btn').addEventListener('click', () => {
+    const scriptContent = getCurrentProject().files['script.js'] || "// No script found";
+    const auditPrompt = `Please perform a strict Three.js performance audit on the following code. Identify bottlenecks (draw calls, lack of InstancedMesh, heavy shadows, expensive materials, memory leaks). Output your findings clearly, then provide the optimized code block.\n\nCode:\n\`\`\`javascript\n${scriptContent}\n\`\`\``;
+    document.getElementById('prompt-input').value = auditPrompt;
+    runGeneration(auditPrompt);
+});
+
+function updateGenerateBtnUI() {
+    if (isGenerating) {
+        generateBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg> Stop`;
+        generateBtn.classList.remove('btn-primary');
+        generateBtn.classList.add('btn-danger');
+    } else {
+        generateBtn.innerHTML = `Generate <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+        generateBtn.classList.remove('btn-danger');
+        generateBtn.classList.add('btn-primary');
+    }
+}
+
+async function runGeneration(prompt, isContinuation = false) {
+    if (!appSettings.apiKey) return alert("Set API Key in settings.");
+    if (!isContinuation) {
+        addMessage(prompt, 'user');
+        document.getElementById('prompt-input').value = '';
+    } else {
+        addMessage(prompt, 'user');
+    }
     
+    isGenerating = true;
+    updateGenerateBtnUI();
+    abortController = new AbortController();
+
     const thinkingRow = document.createElement('div');
     thinkingRow.classList.add('chat-row');
     thinkingRow.innerHTML = `<div class="chat-avatar ai">V</div><div class="chat-bubble ai">Vier is thinking...</div>`;
@@ -458,32 +556,36 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         const sysPrompt = `Mode: ${currentMode}\nRules:\n${appSettings.aiRules}\nCurrent Files: ${JSON.stringify(getCurrentProject().files)}`;
         
         if (appSettings.provider === 'openai' || appSettings.provider === 'custom') {
-            aiResponseText = await callOpenAI(prompt, sysPrompt);
+            aiResponseText = await callOpenAI(prompt, sysPrompt, abortController.signal);
         } else if (appSettings.provider === 'anthropic') {
-            aiResponseText = await callAnthropic(prompt, sysPrompt);
+            aiResponseText = await callAnthropic(prompt, sysPrompt, abortController.signal);
         } else if (appSettings.provider === 'gemini') {
-            aiResponseText = await callGemini(prompt, sysPrompt);
+            aiResponseText = await callGemini(prompt, sysPrompt, abortController.signal);
         }
 
         thinkingRow.remove();
         addMessage(aiResponseText, 'ai');
         
-        // Parse and inject code into files
         if (currentMode === 'build' && !aiResponseText.includes('<question>') && !aiResponseText.includes('<choose>')) {
             parseAndApplyCode(aiResponseText);
         }
     } catch (error) {
         thinkingRow.remove();
-        addMessage("Error: " + error.message, 'ai');
+        if (error.name === 'AbortError') {
+            addMessage("Generation stopped by user.", 'ai');
+        } else {
+            addMessage("Error: " + error.message, 'ai');
+        }
+    } finally {
+        isGenerating = false;
+        updateGenerateBtnUI();
     }
-});
+}
 
-// New function to extract code blocks and save to virtual file system
 function parseAndApplyCode(text) {
     const project = getCurrentProject();
     if (!project) return;
 
-    // Regex to find markdown code blocks
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
     let match;
     let filesUpdated = false;
@@ -493,7 +595,6 @@ function parseAndApplyCode(text) {
         let codeContent = match[2].trim();
         
         let filename = '';
-        // Check first line for filename comment
         const firstLineEnd = codeContent.indexOf('\n');
         const firstLine = firstLineEnd !== -1 ? codeContent.substring(0, firstLineEnd).trim() : codeContent;
         
@@ -505,14 +606,12 @@ function parseAndApplyCode(text) {
             codeContent = codeContent.substring(firstLineEnd + 1).trim();
         }
 
-        // Fallback to extension guessing if comment is missing
         if (!filename) {
             if (lang === 'html') filename = 'index.html';
             else if (lang === 'css') filename = 'styles.css';
             else if (lang === 'javascript' || lang === 'js') filename = 'script.js';
         }
 
-        // Save to file system
         if (filename) {
             project.files[filename] = codeContent;
             filesUpdated = true;
@@ -525,34 +624,37 @@ function parseAndApplyCode(text) {
     }
 }
 
-async function callOpenAI(prompt, sysPrompt) {
+async function callOpenAI(prompt, sysPrompt, signal) {
     const endpoint = appSettings.provider === 'custom' ? `${appSettings.baseUrl}/chat/completions` : 'https://api.openai.com/v1/chat/completions';
     const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${appSettings.apiKey}` },
-        body: JSON.stringify({ model: appSettings.model || "gpt-4o", messages: [{ role: "system", content: sysPrompt }, { role: "user", content: prompt }] })
+        body: JSON.stringify({ model: appSettings.model || "gpt-4o", messages: [{ role: "system", content: sysPrompt }, { role: "user", content: prompt }] }),
+        signal: signal
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message);
     return data.choices[0].message.content;
 }
 
-async function callAnthropic(prompt, sysPrompt) {
+async function callAnthropic(prompt, sysPrompt, signal) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': appSettings.apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: appSettings.model || "claude-3-5-sonnet-20241022", system: sysPrompt, messages: [{ role: 'user', content: prompt }], max_tokens: 1024 })
+        body: JSON.stringify({ model: appSettings.model || "claude-3-5-sonnet-20241022", system: sysPrompt, messages: [{ role: 'user', content: prompt }], max_tokens: 1024 }),
+        signal: signal
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message);
     return data.content[0].text;
 }
 
-async function callGemini(prompt, sysPrompt) {
+async function callGemini(prompt, sysPrompt, signal) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${appSettings.model || 'gemini-1.5-flash'}:generateContent?key=${appSettings.apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: sysPrompt }] }, contents: [{ parts: [{ text: prompt }] }] })
+        body: JSON.stringify({ system_instruction: { parts: [{ text: sysPrompt }] }, contents: [{ parts: [{ text: prompt }] }] }),
+        signal: signal
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message);
@@ -560,7 +662,7 @@ async function callGemini(prompt, sysPrompt) {
 }
 
 // ==========================================
-// WORKSPACE TABS & CODE EDITOR
+// WORKSPACE TABS & MOBILE NAV
 // ==========================================
 document.querySelectorAll('.ws-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -574,12 +676,28 @@ document.querySelectorAll('.ws-tab').forEach(tab => {
     });
 });
 
+document.querySelectorAll('.mobile-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        document.getElementById('mobile-panel-chat').classList.remove('active-mobile');
+        document.getElementById('mobile-panel-workspace').classList.remove('active-mobile');
+        
+        document.getElementById(tab.dataset.target).classList.add('active-mobile');
+        
+        if (tab.dataset.target === 'mobile-panel-workspace') {
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+        }
+    });
+});
+
 function renderFileTree() {
     const project = getCurrentProject();
     if (!project) return;
     
     const tree = document.querySelector('.file-tree');
-    tree.innerHTML = ''; // Clear existing
+    tree.innerHTML = '';
     
     let firstFile = null;
     Object.keys(project.files).forEach(filename => {
@@ -587,16 +705,32 @@ function renderFileTree() {
         const item = document.createElement('div');
         item.className = 'file-item';
         item.dataset.file = filename;
-        item.innerText = `📄 ${filename}`;
+        
+        const isAsset = filename.startsWith('assets/');
+        const icon = isAsset ? '🖼️' : '📄';
+        item.innerHTML = `${icon} ${filename}`;
+        
+        if (isAsset) {
+            const tag = document.createElement('span');
+            tag.className = 'asset-tag';
+            tag.innerText = 'Asset';
+            item.appendChild(tag);
+        }
+        
         item.addEventListener('click', () => {
             document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
             item.classList.add('active');
-            document.getElementById('code-viewer').innerText = project.files[filename] || "// Empty file";
+            const content = project.files[filename];
+            // Prevent rendering massive base64 strings directly in the DOM
+            if (typeof content === 'string' && content.startsWith('data:')) {
+                document.getElementById('code-viewer').innerText = `// Binary Asset Preview\n// File: ${filename}\n// Size: ${(content.length / 1024).toFixed(2)} KB\n// Use this path in your code:\nconst path = "${filename}";`;
+            } else {
+                document.getElementById('code-viewer').innerText = content || "// Empty file";
+            }
         });
         tree.appendChild(item);
     });
     
-    // Auto-select the first file
     if (firstFile) {
         tree.querySelector('.file-item').classList.add('active');
         document.getElementById('code-viewer').innerText = project.files[firstFile];
