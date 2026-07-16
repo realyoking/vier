@@ -32,7 +32,7 @@
             <div class="hero-content">
                 <div class="pill-big">
                     <span class="pill-dot"></span>
-                    Now supporting GitHub Pages Deployment
+                    Now supporting Asset Uploads & Performance Audits
                 </div>
                 <h1>Build immersive 3D worlds with natural language</h1>
                 <h2>Vier is your AI co-pilot for the web. Bring your own key, plan your architecture, and generate Three.js scenes instantly.</h2>
@@ -44,9 +44,7 @@
 
             <div class="projects-section">
                 <h3>Your Projects</h3>
-                <div id="projects-grid" class="projects-grid">
-                    <!-- Projects injected here -->
-                </div>
+                <div id="projects-grid" class="projects-grid"></div>
             </div>
         </main>
     </div>
@@ -70,13 +68,22 @@
         </nav>
 
         <main class="editor-layout">
+            <!-- Drop Overlay (Hidden by default) -->
+            <div id="drop-overlay" class="drop-overlay hidden">
+                <div class="drop-message">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <h3>Drop Assets to Upload</h3>
+                    <p>.glb, .gltf, .png, .jpg</p>
+                </div>
+            </div>
+
             <!-- Panel 1: Chat -->
-            <section class="chat-panel">
+            <section id="mobile-panel-chat" class="chat-panel active-mobile">
                 <div class="chat-header">
                     <span>Vier Assistant</span>
                     <div class="mode-toggle">
-                        <button class="mode-btn active" data-mode="build">Build</button>
-                        <button class="mode-btn" data-mode="plan">Plan</button>
+                        <button class="mode-btn active" data-mode="build" title="Build Mode: AI will write and apply code to files">Build</button>
+                        <button class="mode-btn" data-mode="plan" title="Plan Mode: AI will only explain the architecture without writing code">Plan</button>
                     </div>
                 </div>
                 
@@ -84,7 +91,7 @@
                     <div id="chat-empty-state" class="chat-empty-state">
                         <div class="empty-icon">3D</div>
                         <h4>Start Building</h4>
-                        <p>Ask Vier to generate 3D objects, lighting, or animations.</p>
+                        <p>Ask Vier to generate 3D objects, drop .glb models, or audit code.</p>
                         <div class="quick-prompts">
                             <button class="quick-prompt">Add a rotating cube</button>
                             <button class="quick-prompt">Add point lighting</button>
@@ -97,9 +104,13 @@
                     <textarea id="prompt-input" class="prompt-input" placeholder="Ask Vier to build something..."></textarea>
                     <div class="prompt-footer">
                         <div class="prompt-controls">
-                            <select id="chat-model-selector" class="model-select" title="Select Model"></select>
+                            <select id="chat-model-selector" class="model-select" title="Select AI Model"></select>
+                            <button id="audit-btn" class="btn btn-secondary btn-sm" title="AI Performance Auditor">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                                Audit
+                            </button>
                         </div>
-                        <button id="generate-btn" class="btn btn-primary btn-sm">
+                        <button id="generate-btn" class="btn btn-primary btn-sm" title="Generate Response">
                             Generate
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
                         </button>
@@ -107,8 +118,8 @@
                 </div>
             </section>
 
-            <!-- Panel 2: Workspace (Tabs for Code & Preview) -->
-            <section class="workspace-panel">
+            <!-- Panel 2: Workspace -->
+            <section id="mobile-panel-workspace" class="workspace-panel">
                 <div class="workspace-tabs">
                     <div class="tabs-left">
                         <button class="ws-tab active" data-ws-tab="preview">
@@ -117,41 +128,35 @@
                         </button>
                         <button class="ws-tab" data-ws-tab="code">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                            Files & Code
+                            Files & Assets
                         </button>
                     </div>
                     <div class="ws-actions">
-                        <button id="sync-gh-btn" class="btn btn-secondary btn-sm" title="Push to GitHub">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                            Sync
-                        </button>
+                        <button id="sync-gh-btn" class="btn btn-secondary btn-sm" title="Push to GitHub">Sync</button>
                         <button id="deploy-gh-btn" class="btn btn-primary btn-sm" title="Deploy to GitHub Pages">Deploy</button>
                     </div>
                 </div>
                 
                 <div class="workspace-content">
-                    <!-- Preview Pane -->
                     <div id="preview-pane" class="ws-pane active">
                         <canvas id="three-canvas"></canvas>
-                        <div class="preview-overlay">
-                            <span>Orbit Controls Active</span>
-                        </div>
+                        <div class="preview-overlay"><span>Orbit Controls Active</span></div>
                     </div>
-                    
-                    <!-- Code Pane -->
                     <div id="code-pane" class="ws-pane">
                         <div class="code-explorer">
-                            <div class="file-tree">
-                                <!-- File items dynamically injected by JS -->
-                            </div>
-                            <div class="code-editor-content">
-                                <pre id="code-viewer">// Select a file</pre>
-                            </div>
+                            <div class="file-tree"></div>
+                            <div class="code-editor-content"><pre id="code-viewer">// Select a file</pre></div>
                         </div>
                     </div>
                 </div>
             </section>
         </main>
+
+        <!-- Mobile Bottom Nav -->
+        <nav class="mobile-tab-bar">
+            <button class="mobile-tab active" data-target="mobile-panel-chat">Chat</button>
+            <button class="mobile-tab" data-target="mobile-panel-workspace">Workspace</button>
+        </nav>
     </div>
 
     <!-- ================= SETTINGS MODAL ================= -->
@@ -161,16 +166,13 @@
                 <h3>Settings</h3>
                 <button id="close-settings-btn" class="btn btn-secondary btn-sm">Close</button>
             </div>
-            
             <div class="settings-layout">
                 <div class="settings-tabs">
                     <button class="settings-tab active" data-tab="ai">AI / API Keys</button>
                     <button class="settings-tab" data-tab="github">GitHub</button>
                     <button class="settings-tab" data-tab="rules">AI Rules</button>
                 </div>
-                
                 <div class="settings-content">
-                    <!-- AI Tab -->
                     <div class="settings-pane active" data-pane="ai">
                         <div class="form-group">
                             <label>Provider</label>
@@ -195,38 +197,24 @@
                         </div>
                         <button id="fetch-models-btn" class="btn btn-secondary btn-sm">Fetch Models</button>
                     </div>
-
-                    <!-- GitHub Tab -->
                     <div class="settings-pane" data-pane="github">
                         <p class="pane-desc">Connect your GitHub account to sync code and deploy to GitHub Pages.</p>
                         <div class="form-group">
                             <label>GitHub Personal Access Token (PAT)</label>
                             <input type="password" id="gh-pat" class="byok-input" placeholder="ghp_..." />
                         </div>
-                        <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&description=VierAI" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration: none; display: inline-flex; margin-bottom: 16px;">
-                            Generate GitHub PAT (Pre-filled Scopes)
-                        </a>
-                        
-                        <div class="repo-options">
-                            <button id="fetch-repos-btn" class="btn btn-secondary btn-sm">Fetch My Repos</button>
-                        </div>
-
+                        <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&description=VierAI" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration: none; display: inline-flex; margin-bottom: 16px;">Generate GitHub PAT</a>
+                        <div class="repo-options"><button id="fetch-repos-btn" class="btn btn-secondary btn-sm">Fetch My Repos</button></div>
                         <div class="form-group" id="existing-repo-group">
                             <label>Use Existing Repository</label>
-                            <select id="gh-existing-repo" class="byok-select" disabled>
-                                <option>Fetch repos first...</option>
-                            </select>
+                            <select id="gh-existing-repo" class="byok-select" disabled><option>Fetch repos first...</option></select>
                         </div>
-
                         <div class="form-group">
                             <label>OR Create New Repository</label>
                             <input type="text" id="gh-new-repo" class="byok-input" placeholder="my-new-3d-scene" />
                         </div>
-                        
                         <p id="gh-status" style="font-size: 12px; color: var(--brand-primary); margin-top: 8px;"></p>
                     </div>
-
-                    <!-- Rules Tab -->
                     <div class="settings-pane" data-pane="rules">
                         <p class="pane-desc">Define rules for the AI. The AI will use tags like &lt;question&gt; and &lt;choose&gt; to interact with you.</p>
                         <textarea id="ai-rules-input" class="prompt-input" style="height: 250px; font-family: 'JetBrains Mono', monospace; font-size: 12px;"></textarea>
