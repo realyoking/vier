@@ -18,8 +18,12 @@ The GLTFLoader is ALREADY imported and available globally in the window. Do not 
 To load a 3D model, use: new THREE.GLTFLoader().load('assets/model.glb', ...)
 To load a texture, use: new THREE.TextureLoader().load('assets/texture.png', ...)
 
+## Image Generation Rules:
+If the user asks to generate a texture or image, output EXACTLY this tag and nothing else:
+<generate_image>{"prompt": "detailed description of image", "filename": "name.png"}</generate_image>
+
 ## Coding Rules (CRITICAL):
-When in 'build' mode, you MUST ALWAYS output the complete, updated content for ALL THREE files: index.html, script.js, and styles.css. NEVER omit a file.
+When in 'build' or 'agent' mode, you MUST ALWAYS output the complete, updated content for ALL THREE files: index.html, script.js, and styles.css. NEVER omit a file.
 Use standard Three.js r128 syntax.
 
 To update files, output the code in standard markdown code blocks. 
@@ -45,10 +49,13 @@ let appSettings = JSON.parse(localStorage.getItem('vier_settings')) || {
     provider: 'openai',
     baseUrl: '',
     apiKey: '',
-    model: 'gpt-4o',
+    textModel: 'gpt-4o',
+    imageModel: 'dall-e-3',
+    videoModel: '',
     ghPat: '',
     ghRepo: '', 
-    aiRules: DEFAULT_AI_RULES
+    aiRules: DEFAULT_AI_RULES,
+    fetchedModels: []
 };
 
 let projects = JSON.parse(localStorage.getItem('vier_projects')) || [];
@@ -153,7 +160,7 @@ function renderEmptyState() {
         <div id="chat-empty-state" class="chat-empty-state">
             <div class="empty-icon">3D</div>
             <h4>Start Building</h4>
-            <p>Ask Vier to generate 3D objects, drop .glb models, or audit code.</p>
+            <p>Ask Vier to generate 3D objects, drop .glb models, or use Agent Mode.</p>
             <div class="quick-prompts">
                 <button class="quick-prompt">Add a rotating cube</button>
                 <button class="quick-prompt">Add point lighting</button>
@@ -262,7 +269,6 @@ function populateSettings() {
     document.getElementById('api-provider').value = appSettings.provider;
     document.getElementById('base-url').value = appSettings.baseUrl;
     document.getElementById('api-key').value = appSettings.apiKey;
-    document.getElementById('api-model').value = appSettings.model;
     document.getElementById('gh-pat').value = appSettings.ghPat;
     document.getElementById('ai-rules-input').value = appSettings.aiRules;
     
@@ -274,6 +280,30 @@ function populateSettings() {
         select.innerHTML = `<option value="${appSettings.ghRepo}">${appSettings.ghRepo} (Current)</option>`;
         select.disabled = false;
     }
+
+    // Populate Model Selects
+    const textSel = document.getElementById('api-model-text');
+    const imgSel = document.getElementById('api-model-image');
+    const vidSel = document.getElementById('api-model-video');
+    
+    textSel.innerHTML = '<option value="">None</option>';
+    imgSel.innerHTML = '<option value="">None</option>';
+    vidSel.innerHTML = '<option value="">None</option>';
+
+    if (appSettings.fetchedModels && appSettings.fetchedModels.length > 0) {
+        appSettings.fetchedModels.forEach(m => {
+            textSel.innerHTML += `<option value="${m}">${m}</option>`;
+            imgSel.innerHTML += `<option value="${m}">${m}</option>`;
+            vidSel.innerHTML += `<option value="${m}">${m}</option>`;
+        });
+    } else {
+        textSel.innerHTML += `<option value="${appSettings.textModel || ''}">${appSettings.textModel || 'Fetch models first'}</option>`;
+        imgSel.innerHTML += `<option value="${appSettings.imageModel || ''}">${appSettings.imageModel || 'Fetch models first'}</option>`;
+    }
+
+    textSel.value = appSettings.textModel;
+    imgSel.value = appSettings.imageModel;
+    vidSel.value = appSettings.videoModel;
 }
 
 document.getElementById('api-provider').addEventListener('change', (e) => {
@@ -285,7 +315,9 @@ document.getElementById('save-settings-btn').addEventListener('click', () => {
     appSettings.provider = document.getElementById('api-provider').value;
     appSettings.baseUrl = document.getElementById('base-url').value;
     appSettings.apiKey = document.getElementById('api-key').value;
-    appSettings.model = document.getElementById('api-model').value;
+    appSettings.textModel = document.getElementById('api-model-text').value;
+    appSettings.imageModel = document.getElementById('api-model-image').value;
+    appSettings.videoModel = document.getElementById('api-model-video').value;
     appSettings.ghPat = document.getElementById('gh-pat').value;
     appSettings.aiRules = document.getElementById('ai-rules-input').value;
     
@@ -318,8 +350,10 @@ document.getElementById('fetch-models-btn').addEventListener('click', async () =
     if (provider === 'custom' && baseUrl) endpoint = `${baseUrl}/models`;
     else if (provider === 'anthropic' || provider === 'gemini') {
         const manualModels = provider === 'anthropic' ? ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229'] : ['gemini-1.5-flash', 'gemini-1.5-pro'];
-        document.getElementById('api-model').innerHTML = manualModels.map(m => `<option value="${m}">${m}</option>`).join('');
-        appSettings.model = manualModels[0];
+        appSettings.fetchedModels = manualModels;
+        appSettings.textModel = manualModels[0];
+        localStorage.setItem('vier_settings', JSON.stringify(appSettings));
+        populateSettings();
         updateModelSelector();
         return;
     }
@@ -328,11 +362,12 @@ document.getElementById('fetch-models-btn').addEventListener('click', async () =
         const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${key}` } });
         const data = await res.json();
         if (data.data) {
-            const select = document.getElementById('api-model');
-            select.innerHTML = data.data.map(m => `<option value="${m.id}">${m.id}</option>`).join('');
-            const preferred = data.data.find(m => m.id.includes('gpt-4o') || m.id.includes('gpt-4'));
-            if (preferred) select.value = preferred.id;
-            appSettings.model = select.value;
+            appSettings.fetchedModels = data.data.map(m => m.id);
+            // Heuristic for default selections
+            appSettings.textModel = data.data.find(m => m.id.includes('gpt-4o'))?.id || data.data[0].id;
+            appSettings.imageModel = data.data.find(m => m.id.includes('dall-e-3'))?.id || '';
+            localStorage.setItem('vier_settings', JSON.stringify(appSettings));
+            populateSettings();
             updateModelSelector();
         }
     } catch (e) { alert("Failed to fetch models."); }
@@ -340,15 +375,33 @@ document.getElementById('fetch-models-btn').addEventListener('click', async () =
 
 function updateModelSelector() {
     const chatSelector = document.getElementById('chat-model-selector');
-    const settingsSelector = document.getElementById('api-model');
-    chatSelector.innerHTML = settingsSelector.innerHTML;
-    chatSelector.value = appSettings.model;
+    chatSelector.innerHTML = '';
+    
+    const icons = {
+        text: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>',
+        image: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>',
+        video: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>'
+    };
+    
+    if (appSettings.textModel) {
+        const opt = document.createElement('option');
+        opt.value = 'text';
+        opt.innerHTML = `${icons.text} ${appSettings.textModel}`;
+        chatSelector.appendChild(opt);
+    }
+    if (appSettings.imageModel) {
+        const opt = document.createElement('option');
+        opt.value = 'image';
+        opt.innerHTML = `${icons.image} ${appSettings.imageModel}`;
+        chatSelector.appendChild(opt);
+    }
+    if (appSettings.videoModel) {
+        const opt = document.createElement('option');
+        opt.value = 'video';
+        opt.innerHTML = `${icons.video} ${appSettings.videoModel}`;
+        chatSelector.appendChild(opt);
+    }
 }
-
-document.getElementById('chat-model-selector').addEventListener('change', (e) => {
-    appSettings.model = e.target.value;
-    localStorage.setItem('vier_settings', JSON.stringify(appSettings));
-});
 
 // ==========================================
 // GITHUB INTEGRATION
@@ -512,6 +565,21 @@ document.getElementById('upload-btn').addEventListener('click', () => {
 document.getElementById('file-input').addEventListener('change', (e) => {
     handleFileUpload(e.target.files);
     e.target.value = ''; 
+});
+
+// ==========================================
+// COMPONENT LIBRARY
+// ==========================================
+document.getElementById('comp-lib-btn').addEventListener('click', () => {
+    document.getElementById('comp-dropdown').classList.toggle('hidden');
+});
+
+document.querySelectorAll('.comp-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.getElementById('prompt-input').value = item.dataset.prompt;
+        document.getElementById('comp-dropdown').classList.add('hidden');
+        runGeneration(item.dataset.prompt);
+    });
 });
 
 // ==========================================
@@ -688,14 +756,77 @@ function updateGenerateBtnUI() {
     }
 }
 
+// ==========================================
+// REAL-TIME AGENT LOGIC & STREAMING
+// ==========================================
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function moveAgentCursor(selector, thoughtText) {
+    const cursor = document.getElementById('agent-cursor');
+    const bubble = document.getElementById('agent-bubble');
+    const target = document.querySelector(selector);
+    
+    if (!target) return;
+    
+    const rect = target.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
+    cursor.style.left = `${x}px`;
+    cursor.style.top = `${y}px`;
+    if (thoughtText) bubble.innerText = thoughtText;
+    
+    await sleep(800);
+}
+
+async function runAgentSequence() {
+    const cursor = document.getElementById('agent-cursor');
+    cursor.classList.remove('hidden');
+    
+    await moveAgentCursor('#prompt-input', 'Analyzing prompt...');
+    
+    // 1. Think & Write Reply
+    await moveAgentCursor('#chat-history', 'Thinking...');
+    
+    // 2. Write Code
+    await moveAgentCursor('.ws-tab[data-ws-tab="code"]', 'Writing code...');
+    document.querySelector('.ws-tab[data-ws-tab="code"]').click();
+    
+    // 3. Test Scene
+    await moveAgentCursor('.ws-tab[data-ws-tab="preview"]', 'Testing scene...');
+    document.querySelector('.ws-tab[data-ws-tab="preview"]').click();
+    
+    // Simulate playing the scene
+    const previewPane = document.getElementById('preview-pane');
+    const rect = previewPane.getBoundingClientRect();
+    
+    cursor.style.left = `${rect.left + 200}px`;
+    cursor.style.top = `${rect.top + 200}px`;
+    await sleep(600);
+    
+    cursor.style.left = `${rect.left + 400}px`;
+    cursor.style.top = `${rect.top + 300}px`;
+    await sleep(600);
+    
+    cursor.style.left = `${rect.left + 300}px`;
+    cursor.style.top = `${rect.top + 200}px`;
+    await sleep(600);
+    
+    // 4. Done
+    await moveAgentCursor('#generate-btn', 'Task complete!');
+    await sleep(500);
+    cursor.classList.add('hidden');
+}
+
 async function runGeneration(prompt, isContinuation = false) {
     if (!appSettings.apiKey) return alert("Set API Key in settings.");
     
     let displayText = prompt;
+    let finalPrompt = prompt;
     
     if (pendingAttachments.length > 0) {
         displayText = prompt + (prompt ? `\n\n(Attached: ${pendingAttachments.join(', ')})` : `(Attached: ${pendingAttachments.join(', ')})`);
-        let finalPrompt = prompt + `\n\nI have attached the following assets: ${pendingAttachments.join(', ')}. Please use them in the scene.`;
+        finalPrompt = prompt + `\n\nI have attached the following assets: ${pendingAttachments.join(', ')}. Please use them in the scene.`;
         
         addMessage(finalPrompt, 'user'); 
         document.getElementById('prompt-input').value = '';
@@ -715,26 +846,83 @@ async function runGeneration(prompt, isContinuation = false) {
     thinkingRow.classList.add('chat-row');
     thinkingRow.innerHTML = `<div class="chat-avatar ai">V</div><div class="chat-bubble ai"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
     document.getElementById('chat-history').appendChild(thinkingRow);
+    const thinkingBubble = thinkingRow.querySelector('.chat-bubble');
 
     try {
         let aiResponseText = "";
         const sysPrompt = `Mode: ${currentMode}\nRules:\n${appSettings.aiRules}\nCurrent Files: ${JSON.stringify(getCurrentProject().files)}`;
         
+        // Streaming Handler
+        const onChunk = (delta) => {
+            aiResponseText += delta;
+            
+            // If in Agent Mode, animate cursor based on content
+            if (currentMode === 'agent') {
+                const cursor = document.getElementById('agent-cursor');
+                if (!cursor.classList.contains('hidden')) {
+                    // If code block starts, move to code tab
+                    if (aiResponseText.includes('```')) {
+                        if (!cursor.dataset.coding) {
+                            cursor.dataset.coding = 'true';
+                            document.querySelector('.ws-tab[data-ws-tab="code"]').click();
+                            moveAgentCursor('#code-viewer', 'Writing code...');
+                        }
+                        // Update code viewer in real-time
+                        const codeStartIndex = aiResponseText.indexOf('```');
+                        let codePart = aiResponseText.substring(codeStartIndex + 3);
+                        const firstNewline = codePart.indexOf('\n');
+                        if (firstNewline !== -1 && !codePart.substring(0, firstNewline).includes(' ')) {
+                            codePart = codePart.substring(firstNewline + 1);
+                        }
+                        document.getElementById('code-viewer').innerText = codePart;
+                    } else {
+                        // Otherwise, update chat bubble
+                        thinkingBubble.innerHTML = formatMarkdown(aiResponseText);
+                        moveAgentCursor('#chat-history', 'Thinking...');
+                    }
+                }
+            } else {
+                // Normal Mode: Just update chat bubble
+                thinkingBubble.innerHTML = formatMarkdown(aiResponseText);
+            }
+        };
+        
         if (appSettings.provider === 'openai' || appSettings.provider === 'custom') {
-            aiResponseText = await callOpenAI(sysPrompt, abortController.signal);
+            aiResponseText = await callOpenAIStream(finalPrompt, sysPrompt, abortController.signal, onChunk);
         } else if (appSettings.provider === 'anthropic') {
-            aiResponseText = await callAnthropic(sysPrompt, abortController.signal);
+            aiResponseText = await callAnthropicStream(finalPrompt, sysPrompt, abortController.signal, onChunk);
         } else if (appSettings.provider === 'gemini') {
-            aiResponseText = await callGemini(sysPrompt, abortController.signal);
+            aiResponseText = await callGeminiStream(finalPrompt, sysPrompt, abortController.signal, onChunk);
         }
 
         thinkingRow.remove();
         addMessage(aiResponseText, 'ai');
         
-        if (currentMode === 'build' && !aiResponseText.includes('<question>') && !aiResponseText.includes('<choose>')) {
+        // Check for Image Generation Tag
+        const imageGenMatch = aiResponseText.match(/<generate_image>(.*?)<\/generate_image>/s);
+        if (imageGenMatch) {
+            const imgData = JSON.parse(imageGenMatch[1]);
+            addMessage(`Generating image: ${imgData.prompt}...`, 'ai');
+            const imgUrl = await generateImage(imgData.prompt);
+            if (imgUrl) {
+                getCurrentProject().files[`assets/${imgData.filename}`] = imgUrl;
+                saveProjects();
+                renderFileTree();
+                runGeneration(`The image has been generated and saved at assets/${imgData.filename}. Please update the code to use it.`, true);
+                return;
+            }
+        }
+        
+        if ((currentMode === 'build' || currentMode === 'agent') && !aiResponseText.includes('<question>') && !aiResponseText.includes('<choose>')) {
             parseAndApplyCode(aiResponseText);
             updatePreview();
-            setTimeout(captureThumbnail, 1000); 
+            
+            if (currentMode === 'agent') {
+                // Run the final visual agent sequence (testing the game)
+                await runAgentSequence();
+            } else {
+                setTimeout(captureThumbnail, 1000); 
+            }
         }
     } catch (error) {
         thinkingRow.remove();
@@ -746,6 +934,31 @@ async function runGeneration(prompt, isContinuation = false) {
     } finally {
         isGenerating = false;
         updateGenerateBtnUI();
+        document.getElementById('agent-cursor').classList.add('hidden');
+    }
+}
+
+async function generateImage(prompt) {
+    if (!appSettings.imageModel) return null;
+    try {
+        const res = await fetch('https://api.openai.com/v1/images/generations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${appSettings.apiKey}` },
+            body: JSON.stringify({ model: appSettings.imageModel, prompt: prompt, n: 1, size: '512x512' })
+        });
+        const data = await res.json();
+        if (data.data && data.data[0].url) {
+            const imgRes = await fetch(data.data[0].url);
+            const blob = await imgRes.blob();
+            return await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        }
+    } catch (e) {
+        console.error("Image gen failed", e);
+        return null;
     }
 }
 
@@ -813,7 +1026,6 @@ function updatePreview() {
     const gltfLoaderScript = '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>';
     const styleTag = `<style>${cssContent}<\/style>`;
     
-    // Intercepts fetch/XHR and captures window.onerror
     const assetInterceptorScript = `
     <script>
         const VIRTUAL_ASSETS = ${JSON.stringify(assetsJson)};
@@ -869,11 +1081,9 @@ function updatePreview() {
     const iframe = document.getElementById('preview-iframe');
     iframe.srcdoc = fullDoc;
     
-    // Hide error banner on refresh
     document.getElementById('error-banner').classList.add('hidden');
 }
 
-// Listen for errors from the iframe
 window.addEventListener('message', (event) => {
     if (event.data.type === 'iframe_error') {
         const banner = document.getElementById('error-banner');
@@ -902,12 +1112,10 @@ window.askAiToFixError = function() {
 }
 
 // ==========================================
-// API CALLS
+// API CALLS (Streaming)
 // ==========================================
-async function callOpenAI(sysPrompt, signal) {
+async function callOpenAIStream(prompt, sysPrompt, signal, onChunk) {
     const project = getCurrentProject();
-    if (!project) throw new Error("No project selected");
-    
     const history = project.messages.map(msg => {
         return { role: msg.sender === 'ai' ? 'assistant' : 'user', content: msg.text };
     });
@@ -917,20 +1125,42 @@ async function callOpenAI(sysPrompt, signal) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${appSettings.apiKey}` },
         body: JSON.stringify({ 
-            model: appSettings.model || "gpt-4o", 
-            messages: [{ role: "system", content: sysPrompt }, ...history] 
+            model: appSettings.textModel || "gpt-4o", 
+            messages: [{ role: "system", content: sysPrompt }, ...history], 
+            stream: true 
         }),
         signal: signal
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message);
-    return data.choices[0].message.content;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = "";
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const data = line.substring(6);
+                if (data === '[DONE]') return fullText;
+                try {
+                    const json = JSON.parse(data);
+                    const delta = json.choices[0]?.delta?.content || "";
+                    if (delta) {
+                        fullText += delta;
+                        onChunk(delta);
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+    return fullText;
 }
 
-async function callAnthropic(sysPrompt, signal) {
+async function callAnthropicStream(prompt, sysPrompt, signal, onChunk) {
     const project = getCurrentProject();
-    if (!project) throw new Error("No project selected");
-    
     const history = project.messages.map(msg => {
         return { role: msg.sender === 'ai' ? 'assistant' : 'user', content: msg.text };
     });
@@ -939,27 +1169,47 @@ async function callAnthropic(sysPrompt, signal) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': appSettings.apiKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({ 
-            model: appSettings.model || "claude-3-5-sonnet-20241022", 
+            model: appSettings.textModel || "claude-3-5-sonnet-20241022", 
             system: sysPrompt, 
             messages: history, 
-            max_tokens: 4096 
+            max_tokens: 4096,
+            stream: true
         }),
         signal: signal
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message);
-    return data.content[0].text;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = "";
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const data = line.substring(6);
+                try {
+                    const json = JSON.parse(data);
+                    if (json.type === 'content_block_delta' && json.delta.text) {
+                        fullText += json.delta.text;
+                        onChunk(json.delta.text);
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+    return fullText;
 }
 
-async function callGemini(sysPrompt, signal) {
+async function callGeminiStream(prompt, sysPrompt, signal, onChunk) {
     const project = getCurrentProject();
-    if (!project) throw new Error("No project selected");
-    
     const history = project.messages.map(msg => {
         return { role: msg.sender === 'ai' ? 'model' : 'user', parts: [{ text: msg.text }] };
     });
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${appSettings.model || 'gemini-1.5-flash'}:generateContent?key=${appSettings.apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${appSettings.textModel || 'gemini-1.5-flash'}:streamGenerateContent?alt=sse&key=${appSettings.apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -968,9 +1218,31 @@ async function callGemini(sysPrompt, signal) {
         }),
         signal: signal
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message);
-    return data.candidates[0].content.parts[0].text;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = "";
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const data = line.substring(6);
+                try {
+                    const json = JSON.parse(data);
+                    const delta = json.candidates[0]?.content?.parts[0]?.text || "";
+                    if (delta) {
+                        fullText += delta;
+                        onChunk(delta);
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+    return fullText;
 }
 
 // ==========================================
