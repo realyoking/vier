@@ -12,13 +12,11 @@
 </head>
 <body data-theme="dark">
 
-    <!-- Agent Cursor -->
     <div id="agent-cursor" class="agent-cursor hidden">
-        <svg id="cursor-svg" width="24" height="24" viewBox="0 0 24 24" fill="#8b5cf6" stroke="white" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#8b5cf6" stroke="white" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
         <div id="agent-bubble" class="agent-bubble">Thinking...</div>
     </div>
 
-    <!-- ================= LANDING VIEW ================= -->
     <div id="landing-view" class="view active">
         <nav class="navbar">
             <div class="nav-left">
@@ -41,14 +39,35 @@
             <div class="hero-content">
                 <div class="pill-big">
                     <span class="pill-dot"></span>
-                    Now featuring Real-time Agentic Mode
+                    Now featuring Templates & 1-Click Publish
                 </div>
                 <h1>Build immersive 3D worlds with natural language</h1>
                 <h2>Vier is your AI co-pilot for the web. Bring your own key, plan your architecture, and generate Three.js scenes instantly.</h2>
                 <button id="new-project-btn" class="btn btn-primary btn-lg">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    New Project
+                    New Blank Project
                 </button>
+            </div>
+
+            <div class="projects-section">
+                <h3>Start from a Template</h3>
+                <div class="templates-grid">
+                    <div class="template-card" data-template="3D Portfolio">
+                        <div class="template-icon">👤</div>
+                        <h4>3D Portfolio</h4>
+                        <p>An interactive 3D resume with floating geometry.</p>
+                    </div>
+                    <div class="template-card" data-template="Product Showcase">
+                        <div class="template-icon">📦</div>
+                        <h4>Product Showcase</h4>
+                        <p>A rotating 3D model with dynamic lighting.</p>
+                    </div>
+                    <div class="template-card" data-template="Interactive Game">
+                        <div class="template-icon">🎮</div>
+                        <h4>Interactive Game</h4>
+                        <p>A simple 3D game with physics and score tracking.</p>
+                    </div>
+                </div>
             </div>
 
             <div class="projects-section">
@@ -58,7 +77,6 @@
         </main>
     </div>
 
-    <!-- ================= EDITOR VIEW ================= -->
     <div id="editor-view" class="view">
         <nav class="navbar editor-nav">
             <div class="nav-left">
@@ -72,6 +90,10 @@
                 </div>
             </div>
             <div class="nav-right">
+                <button id="share-btn" class="btn btn-secondary btn-sm" title="Share Project">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                    Share
+                </button>
                 <button id="theme-toggle-btn-editor" class="btn btn-secondary btn-sm icon-btn" title="Toggle Theme">
                     <svg id="theme-icon-editor" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
                 </button>
@@ -88,7 +110,6 @@
                 </div>
             </div>
 
-            <!-- Panel 1: Chat -->
             <section id="mobile-panel-chat" class="chat-panel active-mobile">
                 <div class="chat-header">
                     <div class="header-left">
@@ -148,7 +169,6 @@
                 </div>
             </section>
 
-            <!-- Panel 2: Workspace -->
             <section id="mobile-panel-workspace" class="workspace-panel">
                 <div class="workspace-tabs">
                     <div class="tabs-left">
@@ -160,10 +180,15 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                             Files & Assets
                         </button>
+                        <button id="reload-preview-btn" class="btn btn-secondary btn-sm" title="Reload Preview">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        </button>
                     </div>
                     <div class="ws-actions">
-                        <button id="sync-gh-btn" class="btn btn-secondary btn-sm" title="Push to GitHub">Sync</button>
-                        <button id="deploy-gh-btn" class="btn btn-primary btn-sm" title="Deploy to GitHub Pages">Deploy</button>
+                        <button id="publish-btn" class="btn btn-primary btn-sm" title="Publish to GitHub Pages">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Publish
+                        </button>
                     </div>
                 </div>
                 
@@ -190,7 +215,6 @@
         </nav>
     </div>
 
-    <!-- ================= SETTINGS MODAL ================= -->
     <div id="settings-modal" class="modal-overlay hidden">
         <div class="modal-content settings-modal">
             <div class="modal-header">
