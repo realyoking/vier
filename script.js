@@ -11,6 +11,13 @@ Your goal is to help the user build stunning web apps, landing pages, and Three.
 - DO NOT use generic purple/blue gradients. Use modern, sleek aesthetics (e.g., dark mode, glassmorphism, subtle accents, high contrast typography).
 - Use modern fonts (Inter, Roboto, etc.) via Google Fonts.
 
+## Animation Rules:
+- If building a 3D scene, you MUST include animations using requestAnimationFrame. Objects should not be static.
+
+## Mock Data Rules:
+- If you need fake data for a website (e.g., user list, product list), generate it in the script.js. 
+- YOU MUST inform the user in the chat: "I am using mock data for this demo."
+
 ## Interaction Rules:
 If you need to ask the user a question to clarify requirements, output EXACTLY this tag:
 <question>Your question here?</question>
@@ -75,19 +82,19 @@ const templates = {
         "script.js": "const scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);\ncamera.position.z = 5;\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(window.innerWidth, window.innerHeight);\ndocument.body.appendChild(renderer.domElement);\n\nconst geometry = new THREE.IcosahedronGeometry(1, 0);\nconst material = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, metalness: 0.8, roughness: 0.2 });\nconst mesh = new THREE.Mesh(geometry, material);\nscene.add(mesh);\n\nconst light = new THREE.DirectionalLight(0xffffff, 1);\nlight.position.set(2, 2, 2);\nscene.add(light);\n\nfunction animate() {\n  requestAnimationFrame(animate);\n  mesh.rotation.x += 0.01;\n  mesh.rotation.y += 0.01;\n  renderer.render(scene, camera);\n}\nanimate();",
         "styles.css": "body { margin: 0; overflow: hidden; background: #000; }"
     },
-    "Product Showcase": {
-        "index.html": "<!DOCTYPE html><html><head><title>Product Showcase</title><link rel=\"stylesheet\" href=\"styles.css\"></head><body><script src=\"three.js\"></script><script src=\"script.js\"></script></body></html>",
-        "script.js": "const scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);\ncamera.position.set(0, 2, 5);\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(window.innerWidth, window.innerHeight);\ndocument.body.appendChild(renderer.domElement);\n\nconst geometry = new THREE.TorusKnotGeometry(0.8, 0.25, 100, 16);\nconst material = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.9, roughness: 0.1 });\nconst mesh = new THREE.Mesh(geometry, material);\nscene.add(mesh);\n\nconst light = new THREE.PointLight(0xffffff, 1.5);\nlight.position.set(5, 5, 5);\nscene.add(light);\n\nfunction animate() {\n  requestAnimationFrame(animate);\n  mesh.rotation.y += 0.005;\n  renderer.render(scene, camera);\n}\nanimate();",
-        "styles.css": "body { margin: 0; overflow: hidden; background: #111; }"
+    "SaaS Landing Page": {
+        "index.html": "<!DOCTYPE html><html><head><title>SaaS Landing</title><script src=\"https://cdn.tailwindcss.com\"></script><link rel=\"stylesheet\" href=\"styles.css\"></head><body class=\"bg-zinc-900 text-white\"><nav class=\"flex justify-between p-6\"><div class=\"font-bold text-xl\">VierCRM</div><button class=\"bg-indigo-600 px-4 py-2 rounded-lg\">Get Started</button></nav><header class=\"text-center py-20\"><h1 class=\"text-6xl font-extrabold tracking-tight\">The Future of CRM</h1><p class=\"text-zinc-400 mt-4 text-xl\">Manage your customers with AI-powered insights.</p><button class=\"bg-indigo-600 px-8 py-4 rounded-lg text-lg font-bold mt-8\">Start Free Trial</button></header><script src=\"script.js\"></script></body></html>",
+        "script.js": "console.log('Landing page loaded');",
+        "styles.css": "body { font-family: 'Inter', sans-serif; }"
     },
     "Interactive Game": {
         "index.html": "<!DOCTYPE html><html><head><title>3D Game</title><link rel=\"stylesheet\" href=\"styles.css\"></head><body><h1>Score: <span id=\"score\">0</span></h1><script src=\"three.js\"></script><script src=\"script.js\"></script></body></html>",
         "script.js": "const scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);\ncamera.position.z = 5;\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(window.innerWidth, window.innerHeight);\ndocument.body.appendChild(renderer.domElement);\n\nlet score = 0;\nconst player = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({color: 0x00ff00}));\nscene.add(player);\n\nconst enemy = new THREE.Mesh(new THREE.SphereGeometry(), new THREE.MeshStandardMaterial({color: 0xff0000}));\nenemy.position.x = 3;\nscene.add(enemy);\n\nscene.add(new THREE.DirectionalLight(0xffffff, 1));\n\ndocument.addEventListener('keydown', (e) => {\n  if(e.key === 'ArrowUp') player.position.y += 0.1;\n  if(e.key === 'ArrowDown') player.position.y -= 0.1;\n  if(e.key === 'ArrowLeft') player.position.x -= 0.1;\n  if(e.key === 'ArrowRight') player.position.x += 0.1;\n});\n\nfunction animate() {\n  requestAnimationFrame(animate);\n  enemy.position.x -= 0.02;\n  if(enemy.position.x < -3) enemy.position.x = 3;\n  \n  if(player.position.distanceTo(enemy.position) < 1) {\n    score++;\n    document.getElementById('score').innerText = score;\n    enemy.position.x = 3;\n    enemy.position.y = Math.random() * 4 - 2;\n  }\n  \n  renderer.render(scene, camera);\n}\nanimate();",
         "styles.css": "body { margin: 0; overflow: hidden; background: #222; color: white; font-family: sans-serif; } h1 { position: absolute; top: 10px; left: 10px; z-index: 10; }"
     },
-    "SaaS Landing Page": {
-        "index.html": "<!DOCTYPE html><html><head><title>SaaS Landing</title><script src=\"https://cdn.tailwindcss.com\"></script><link rel=\"stylesheet\" href=\"styles.css\"></head><body class=\"bg-zinc-900 text-white\"><nav class=\"flex justify-between p-6\"><div class=\"font-bold text-xl\">VierCRM</div><button class=\"bg-indigo-600 px-4 py-2 rounded-lg\">Get Started</button></nav><header class=\"text-center py-20\"><h1 class=\"text-6xl font-extrabold tracking-tight\">The Future of CRM</h1><p class=\"text-zinc-400 mt-4 text-xl\">Manage your customers with AI-powered insights.</p><button class=\"bg-indigo-600 px-8 py-4 rounded-lg text-lg font-bold mt-8\">Start Free Trial</button></header><script src=\"script.js\"></script></body></html>",
-        "script.js": "console.log('Landing page loaded');",
+    "Dashboard UI": {
+        "index.html": "<!DOCTYPE html><html><head><title>Dashboard</title><script src=\"https://cdn.tailwindcss.com\"></script><link rel=\"stylesheet\" href=\"styles.css\"></head><body class=\"bg-gray-100\"><div class=\"flex h-screen\"><nav class=\"w-64 bg-gray-800 text-white p-4 flex flex-col gap-4\"><div class=\"text-2xl font-bold mb-8\">VierDash</div><a href=\"#\" class=\"hover:text-indigo-400\">Overview</a><a href=\"#\" class=\"hover:text-indigo-400\">Analytics</a><a href=\"#\" class=\"hover:text-indigo-400\">Users</a></nav><main class=\"flex-1 p-8\"><h1 class=\"text-3xl font-bold mb-6\">Overview</h1><div class=\"grid grid-cols-3 gap-6\"><div class=\"bg-white p-6 rounded-lg shadow\"><h2 class=\"text-xl text-gray-500\">Revenue</h2><p class=\"text-3xl font-bold mt-2\">$12,345</p></div><div class=\"bg-white p-6 rounded-lg shadow\"><h2 class=\"text-xl text-gray-500\">Users</h2><p class=\"text-3xl font-bold mt-2\">1,234</p></div><div class=\"bg-white p-6 rounded-lg shadow\"><h2 class=\"text-xl text-gray-500\">Conversion</h2><p class=\"text-3xl font-bold mt-2\">3.4%</p></div></div></main></div><script src=\"script.js\"></script></body></html>",
+        "script.js": "console.log('Dashboard loaded');",
         "styles.css": "body { font-family: 'Inter', sans-serif; }"
     }
 };
@@ -153,6 +160,25 @@ document.getElementById('new-project-btn').addEventListener('click', () => {
     openProject(newProject.id);
 });
 
+document.getElementById('clone-url-btn').addEventListener('click', () => {
+    const url = document.getElementById('clone-url-input').value.trim();
+    if (!url) return alert("Please enter a URL.");
+    
+    const newProject = {
+        id: Date.now().toString(),
+        name: `Cloned ${new Date().toLocaleTimeString()}`,
+        messages: [],
+        files: JSON.parse(JSON.stringify(defaultFiles)),
+        thumb: null
+    };
+    projects.push(newProject);
+    saveProjects();
+    openProject(newProject.id);
+    
+    document.getElementById('prompt-input').value = `Please analyze the layout and style of this website: ${url}\nClone its structure using HTML and Tailwind CSS. Use placeholder images.`;
+    runGeneration(`Please analyze the layout and style of this website: ${url}\nClone its structure using HTML and Tailwind CSS. Use placeholder images.`);
+});
+
 document.querySelectorAll('.template-card').forEach(card => {
     card.addEventListener('click', () => {
         const templateName = card.dataset.template;
@@ -198,7 +224,7 @@ function renderEmptyState() {
     const history = document.getElementById('chat-history');
     history.innerHTML = `
         <div id="chat-empty-state" class="chat-empty-state">
-            <div class="empty-icon">3D</div>
+            <div class="empty-icon">V</div>
             <h4>Start Building</h4>
             <p>Ask Vier to generate 3D objects, web apps, or landing pages.</p>
             <div class="quick-prompts">
@@ -500,7 +526,13 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
             localStorage.setItem('vier_settings', JSON.stringify(appSettings));
         }
 
-        for (const [path, content] of Object.entries(project.files)) {
+        // Clean files for production (remove dev tools like stats.js)
+        let prodFiles = JSON.parse(JSON.stringify(project.files));
+        if (prodFiles['index.html']) {
+            prodFiles['index.html'] = prodFiles['index.html'].replace('<script src="https://cdn.jsdelivr.net/npm/stats.js@1.0.1/build/stats.min.js"><\/script>', '');
+        }
+
+        for (const [path, content] of Object.entries(prodFiles)) {
             let sha = null;
             const checkRes = await fetch(`https://api.github.com/repos/${repoFullName}/contents/${path}`, {
                 headers: { 'Authorization': `token ${appSettings.ghPat}` }
@@ -540,10 +572,10 @@ document.getElementById('share-btn').addEventListener('click', () => {
     if (!project) return;
     
     const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(project))));
-    const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
+    const url = `${window.location.origin}${window.location.pathname}#share=${encoded}&readonly=true`;
     
     navigator.clipboard.writeText(url).then(() => {
-        alert("Shareable link copied to clipboard!");
+        alert("Read-only shareable link copied to clipboard!");
     });
 });
 
@@ -551,12 +583,23 @@ function checkSharedProject() {
     const hash = window.location.hash;
     if (hash.startsWith('#share=')) {
         try {
-            const encoded = hash.substring(7);
+            const encoded = hash.substring(7).split('&')[0];
             const project = JSON.parse(decodeURIComponent(escape(atob(encoded))));
             projects.push(project);
             saveProjects();
             history.replaceState(null, null, window.location.pathname);
             openProject(project.id);
+            
+            // If readonly, hide chat and code
+            if (hash.includes('readonly=true')) {
+                document.getElementById('mobile-panel-chat').style.display = 'none';
+                document.getElementById('mobile-panel-workspace').style.flex = '1';
+                document.getElementById('mobile-panel-workspace').classList.add('active-mobile');
+                document.querySelector('.ws-tab[data-ws-tab="code"]').style.display = 'none';
+                document.querySelector('.ws-tab[data-ws-tab="scene"]').style.display = 'none';
+                document.getElementById('terminal-panel').style.display = 'none';
+                document.querySelector('.ws-actions').style.display = 'none';
+            }
         } catch(e) { console.error("Failed to load shared project", e); }
     }
 }
@@ -889,9 +932,14 @@ async function runAgentSequence() {
 
 async function runGeneration(prompt, isContinuation = false) {
     if (!appSettings.apiKey) return alert("Please set your API Key in Settings.");
-    if (!appSettings.textModel) return alert("Please select a Text Model in Settings (Click 'Fetch Models').");
     
     const selectedModelType = document.getElementById('chat-model-selector').value;
+    
+    // Fix: Only require text model if we are actually doing text generation
+    if (selectedModelType !== 'image' && !appSettings.textModel) {
+        return alert("Please select a Text Model in Settings (Click 'Fetch Models').");
+    }
+    
     let displayText = prompt;
     let finalPrompt = prompt;
     
@@ -1117,6 +1165,7 @@ function updatePreview() {
     const threeScript = '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>';
     const gltfLoaderScript = '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>';
     const tailwindScript = '<script src="https://cdn.tailwindcss.com"><\/script>';
+    const statsScript = '<script src="https://cdn.jsdelivr.net/npm/stats.js@1.0.1/build/stats.min.js"><\/script>';
     const styleTag = `<style>${cssContent}<\/style>`;
     
     const assetInterceptorScript = `
@@ -1147,6 +1196,13 @@ function updatePreview() {
             window.parent.postMessage({ type: 'iframe_error', error: message + ' (Line: ' + lineno + ')' }, '*');
         };
         
+        // Capture console logs
+        const originalLog = console.log;
+        console.log = function(...args) {
+            window.parent.postMessage({ type: 'console_log', message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ') }, '*');
+            originalLog.apply(console, args);
+        };
+        
         // SPA Router
         document.addEventListener('click', (e) => {
             const a = e.target.closest('a');
@@ -1154,6 +1210,42 @@ function updatePreview() {
                 e.preventDefault();
                 const path = a.getAttribute('href');
                 window.parent.postMessage({ type: 'navigate', path: path }, '*');
+            }
+        });
+        
+        // FPS Monitor & Scene Graph
+        window.addEventListener('load', () => {
+            if (typeof Stats !== 'undefined' && typeof THREE !== 'undefined') {
+                const stats = new Stats();
+                stats.showPanel(0); // FPS
+                stats.dom.style.position = 'absolute';
+                stats.dom.style.top = '0';
+                stats.dom.style.right = '0';
+                stats.dom.style.left = 'auto';
+                document.body.appendChild(stats.dom);
+                
+                function animateStats() {
+                    stats.begin();
+                    stats.end();
+                    requestAnimationFrame(animateStats);
+                }
+                animateStats();
+                
+                // Scene Graph
+                setTimeout(() => {
+                    if (window.scene) {
+                        const tree = [];
+                        function traverse(obj, depth) {
+                            if (!obj) return;
+                            tree.push({ name: obj.name || obj.type, depth: depth });
+                            if (obj.children) {
+                                obj.children.forEach(c => traverse(c, depth + 1));
+                            }
+                        }
+                        traverse(window.scene, 0);
+                        window.parent.postMessage({ type: 'scene_tree', tree: tree }, '*');
+                    }
+                }, 1000);
             }
         });
     <\/script>`;
@@ -1172,6 +1264,7 @@ function updatePreview() {
             ${threeScript}
             ${gltfLoaderScript}
             ${tailwindScript}
+            ${statsScript}
             ${styleTag}
         </head>
         <body>
@@ -1186,6 +1279,8 @@ function updatePreview() {
     iframe.srcdoc = fullDoc;
     
     document.getElementById('error-banner').classList.add('hidden');
+    document.getElementById('scene-tree').innerHTML = '<div class="scene-empty">Running scene...</div>';
+    document.getElementById('terminal-output').innerHTML = '';
 }
 
 window.addEventListener('message', (event) => {
@@ -1199,13 +1294,46 @@ window.addEventListener('message', (event) => {
             </div>
         `;
         banner.classList.remove('hidden');
+        
+        // Also log to terminal
+        const term = document.getElementById('terminal-output');
+        const log = document.createElement('div');
+        log.className = 'term-log term-error';
+        log.innerText = `[Error] ${event.data.error}`;
+        term.appendChild(log);
+        term.scrollTop = term.scrollHeight;
+    } else if (event.data.type === 'console_log') {
+        const term = document.getElementById('terminal-output');
+        const log = document.createElement('div');
+        log.className = 'term-log';
+        log.innerText = `[Log] ${event.data.message}`;
+        term.appendChild(log);
+        term.scrollTop = term.scrollHeight;
     } else if (event.data.type === 'navigate') {
         const project = getCurrentProject();
         if (project) {
             project.activePage = event.data.path;
             updatePreview();
         }
+    } else if (event.data.type === 'scene_tree') {
+        const treeEl = document.getElementById('scene-tree');
+        treeEl.innerHTML = '';
+        if (event.data.tree.length === 0) {
+            treeEl.innerHTML = '<div class="scene-empty">No objects in scene.</div>';
+            return;
+        }
+        event.data.tree.forEach(node => {
+            const el = document.createElement('div');
+            el.className = 'scene-node';
+            el.style.paddingLeft = `${8 + node.depth * 16}px`;
+            el.innerText = `${node.name}`;
+            treeEl.appendChild(el);
+        });
     }
+});
+
+document.getElementById('clear-terminal-btn').addEventListener('click', () => {
+    document.getElementById('terminal-output').innerHTML = '';
 });
 
 window.dismissError = function() {
