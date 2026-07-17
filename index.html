@@ -12,6 +12,12 @@
 </head>
 <body data-theme="dark">
 
+    <!-- Agent Cursor -->
+    <div id="agent-cursor" class="agent-cursor hidden">
+        <svg id="cursor-svg" width="24" height="24" viewBox="0 0 24 24" fill="#8b5cf6" stroke="white" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+        <div id="agent-bubble" class="agent-bubble">Thinking...</div>
+    </div>
+
     <!-- ================= LANDING VIEW ================= -->
     <div id="landing-view" class="view active">
         <nav class="navbar">
@@ -35,7 +41,7 @@
             <div class="hero-content">
                 <div class="pill-big">
                     <span class="pill-dot"></span>
-                    Live Sandbox Preview Included
+                    Now featuring Real-time Agentic Mode
                 </div>
                 <h1>Build immersive 3D worlds with natural language</h1>
                 <h2>Vier is your AI co-pilot for the web. Bring your own key, plan your architecture, and generate Three.js scenes instantly.</h2>
@@ -74,7 +80,6 @@
         </nav>
 
         <main class="editor-layout">
-            <!-- Drop Overlay (Hidden by default) -->
             <div id="drop-overlay" class="drop-overlay hidden">
                 <div class="drop-message">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -86,10 +91,22 @@
             <!-- Panel 1: Chat -->
             <section id="mobile-panel-chat" class="chat-panel active-mobile">
                 <div class="chat-header">
-                    <span>Vier Assistant</span>
+                    <div class="header-left">
+                        <span>Vier Assistant</span>
+                        <div class="component-library">
+                            <button id="comp-lib-btn" class="btn btn-secondary btn-sm">Components</button>
+                            <div id="comp-dropdown" class="comp-dropdown hidden">
+                                <div class="comp-item" data-prompt="Add a realistic water shader plane that reflects the environment">Water Shader</div>
+                                <div class="comp-item" data-prompt="Add First Person pointer lock controls so I can walk around">First Person Controls</div>
+                                <div class="comp-item" data-prompt="Add glowing smoke particles emitting from the center">Smoke Particles</div>
+                                <div class="comp-item" data-prompt="Add an instanced mesh of 1000 grass blades that sway in the wind">Instanced Grass</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="mode-toggle">
                         <button class="mode-btn active" data-mode="build" title="Build Mode: AI will write and apply code to files">Build</button>
                         <button class="mode-btn" data-mode="plan" title="Plan Mode: AI will only explain the architecture without writing code">Plan</button>
+                        <button class="mode-btn" data-mode="agent" title="Agent Mode: AI acts autonomously, writing and testing code in real-time">Agent</button>
                     </div>
                 </div>
                 
@@ -97,7 +114,7 @@
                     <div id="chat-empty-state" class="chat-empty-state">
                         <div class="empty-icon">3D</div>
                         <h4>Start Building</h4>
-                        <p>Ask Vier to generate 3D objects, drop .glb models, or audit code.</p>
+                        <p>Ask Vier to generate 3D objects, drop .glb models, or use Agent Mode.</p>
                         <div class="quick-prompts">
                             <button class="quick-prompt">Add a rotating cube</button>
                             <button class="quick-prompt">Add point lighting</button>
@@ -152,7 +169,6 @@
                 
                 <div class="workspace-content">
                     <div id="preview-pane" class="ws-pane active">
-                        <!-- Error Banner -->
                         <div id="error-banner" class="error-banner hidden"></div>
                         <iframe id="preview-iframe" title="3D Preview"></iframe>
                         <div class="preview-overlay"><span>Live Sandbox</span></div>
@@ -206,11 +222,22 @@
                             <label>API Key</label>
                             <input type="password" id="api-key" class="byok-input" placeholder="sk-..." />
                         </div>
-                        <div class="form-group">
-                            <label>Available Models</label>
-                            <select id="api-model" class="byok-select"><option value="">Enter Key & Fetch</option></select>
-                        </div>
                         <button id="fetch-models-btn" class="btn btn-secondary btn-sm">Fetch Models</button>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Text Model 📝</label>
+                                <select id="api-model-text" class="byok-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Image Model 🖼️</label>
+                                <select id="api-model-image" class="byok-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Video Model 🎬</label>
+                                <select id="api-model-video" class="byok-select"></select>
+                            </div>
+                        </div>
                     </div>
                     <div class="settings-pane" data-pane="github">
                         <p class="pane-desc">Connect your GitHub account to sync code and deploy to GitHub Pages.</p>
