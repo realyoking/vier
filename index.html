@@ -107,7 +107,14 @@
                 </div>
 
                 <div class="prompt-container">
-                    <textarea id="prompt-input" class="prompt-input" placeholder="Ask Vier to build something..."></textarea>
+                    <div id="attachment-preview" class="attachment-preview"></div>
+                    <div class="input-wrapper">
+                        <textarea id="prompt-input" class="prompt-input" placeholder="Ask Vier to build something..."></textarea>
+                        <button id="upload-btn" class="upload-btn" title="Upload Asset">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                        </button>
+                        <input type="file" id="file-input" multiple hidden />
+                    </div>
                     <div class="prompt-footer">
                         <div class="prompt-controls">
                             <select id="chat-model-selector" class="model-select" title="Select AI Model"></select>
@@ -145,6 +152,8 @@
                 
                 <div class="workspace-content">
                     <div id="preview-pane" class="ws-pane active">
+                        <!-- Error Banner -->
+                        <div id="error-banner" class="error-banner hidden"></div>
                         <iframe id="preview-iframe" title="3D Preview"></iframe>
                         <div class="preview-overlay"><span>Live Sandbox</span></div>
                     </div>
@@ -158,7 +167,6 @@
             </section>
         </main>
 
-        <!-- Mobile Bottom Nav (3 Tabs) -->
         <nav class="mobile-tab-bar">
             <button class="mobile-tab active" data-target="chat">Assistant</button>
             <button class="mobile-tab" data-target="preview">Preview</button>
