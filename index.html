@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body>
+<body data-theme="dark">
 
     <!-- ================= LANDING VIEW ================= -->
     <div id="landing-view" class="view active">
@@ -24,6 +24,9 @@
             <div class="nav-right">
                 <a href="#" class="nav-link">Docs</a>
                 <a href="#" class="nav-link">Community</a>
+                <button id="theme-toggle-btn" class="btn btn-secondary btn-sm icon-btn" title="Toggle Theme">
+                    <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
+                </button>
                 <button id="open-settings-btn-landing" class="btn btn-secondary btn-sm">Settings</button>
             </div>
         </nav>
@@ -63,6 +66,9 @@
                 </div>
             </div>
             <div class="nav-right">
+                <button id="theme-toggle-btn-editor" class="btn btn-secondary btn-sm icon-btn" title="Toggle Theme">
+                    <svg id="theme-icon-editor" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
+                </button>
                 <button id="open-settings-btn-editor" class="btn btn-secondary btn-sm">Settings</button>
             </div>
         </nav>
@@ -138,7 +144,6 @@
                 </div>
                 
                 <div class="workspace-content">
-                    <!-- LIVE PREVIEW IFRAME (Fixes code not applying) -->
                     <div id="preview-pane" class="ws-pane active">
                         <iframe id="preview-iframe" title="3D Preview"></iframe>
                         <div class="preview-overlay"><span>Live Sandbox</span></div>
