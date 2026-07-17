@@ -676,17 +676,33 @@ document.querySelectorAll('.ws-tab').forEach(tab => {
     });
 });
 
+// Mobile Tab Switching (3 tabs)
 document.querySelectorAll('.mobile-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         
-        document.getElementById('mobile-panel-chat').classList.remove('active-mobile');
-        document.getElementById('mobile-panel-workspace').classList.remove('active-mobile');
+        const target = tab.dataset.target;
+        const chatPanel = document.getElementById('mobile-panel-chat');
+        const workspacePanel = document.getElementById('mobile-panel-workspace');
         
-        document.getElementById(tab.dataset.target).classList.add('active-mobile');
+        // Hide both main panels first
+        chatPanel.classList.remove('active-mobile');
+        workspacePanel.classList.remove('active-mobile');
         
-        if (tab.dataset.target === 'mobile-panel-workspace') {
+        if (target === 'chat') {
+            // Show only chat
+            chatPanel.classList.add('active-mobile');
+        } else {
+            // Show workspace (Preview or Code)
+            workspacePanel.classList.add('active-mobile');
+            
+            // Force click the corresponding workspace tab to switch panes
+            document.querySelector(`.ws-tab[data-ws-tab="${target}"]`).click();
+        }
+        
+        // Trigger resize for 3D canvas if preview is shown
+        if (target === 'preview') {
             setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
         }
     });
