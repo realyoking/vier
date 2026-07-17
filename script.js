@@ -17,13 +17,18 @@ If the user uploads assets (.glb, .png, etc), they are stored in the 'assets/' f
 To load a 3D model, use: new GLTFLoader().load('assets/model.glb', ...)
 To load a texture, use: new THREE.TextureLoader().load('assets/texture.png', ...)
 
-## Coding Rules:
-When in 'build' mode, always provide the complete, updated file content.
+## Coding Rules (CRITICAL):
+When in 'build' mode, you MUST ALWAYS output the complete, updated content for ALL THREE files: index.html, script.js, and styles.css. NEVER omit a file.
 Use standard Three.js r128 syntax.
 
 To update files, output the code in standard markdown code blocks. 
 To specify which file the code belongs to, put the filename in a comment on the VERY FIRST LINE of the code block.
 Example:
+\`\`\`html
+<!-- index.html -->
+<html>...</html>
+\`\`\`
+
 \`\`\`javascript
 // script.js
 const scene = new THREE.Scene();
@@ -32,7 +37,7 @@ const scene = new THREE.Scene();
 ## Performance Auditing:
 If the user clicks "Audit", analyze the provided code for Three.js performance bottlenecks.
 Look for: Excessive draw calls (suggest InstancedMesh), heavy shadow maps, unoptimized geometries, memory leaks (dispose not called).
-Provide a clear report of issues, then output the fixed code.
+Provide a clear report of issues, then output the fixed code for ALL THREE files.
 `;
 
 let appSettings = JSON.parse(localStorage.getItem('vier_settings')) || {
@@ -56,6 +61,33 @@ const defaultFiles = {
 };
 
 // ==========================================
+// THEME TOGGLE LOGIC
+// ==========================================
+function setTheme(theme) {
+    document.body.setAttribute('data-theme', theme);
+    localStorage.setItem('vier_theme', theme);
+    
+    const iconHtml = theme === 'dark' 
+        ? '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>' // Sun
+        : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>'; // Moon
+        
+    document.getElementById('theme-icon').innerHTML = iconHtml;
+    document.getElementById('theme-icon-editor').innerHTML = iconHtml;
+}
+
+document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+    const newTheme = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+});
+document.getElementById('theme-toggle-btn-editor').addEventListener('click', () => {
+    const newTheme = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+});
+
+// Init theme on load
+setTheme(localStorage.getItem('vier_theme') || 'dark');
+
+// ==========================================
 // ROUTING & VIEW MANAGEMENT
 // ==========================================
 const landingView = document.getElementById('landing-view');
@@ -69,7 +101,7 @@ function showView(viewName) {
         renderProjects();
     } else {
         editorView.classList.add('active');
-        updatePreview(); // Load iframe on view open
+        updatePreview();
         updateModelSelector();
         initDragAndDrop();
     }
@@ -362,7 +394,7 @@ document.getElementById('deploy-gh-btn').addEventListener('click', async () => {
 });
 
 // ==========================================
-// DRAG & DROP ASSET CONTEXT (Feature 3)
+// DRAG & DROP ASSET CONTEXT
 // ==========================================
 function initDragAndDrop() {
     const editorLayout = document.querySelector('.editor-layout');
@@ -395,7 +427,7 @@ function initDragAndDrop() {
             
             await new Promise((resolve) => {
                 reader.onload = function(event) {
-                    project.files[path] = event.target.result; // Stores as Base64 Data URL
+                    project.files[path] = event.target.result;
                     uploadedAssets.push(path);
                     resolve();
                 };
@@ -405,7 +437,7 @@ function initDragAndDrop() {
 
         saveProjects();
         renderFileTree();
-        updatePreview(); // Update iframe to include assets
+        updatePreview();
         
         if (uploadedAssets.length > 0) {
             const promptText = `I uploaded the following assets: ${uploadedAssets.join(', ')}. Please add them to the scene.`;
@@ -428,9 +460,41 @@ modeBtns.forEach(btn => {
     });
 });
 
+// Replaces raw code blocks with File Creation UI Cards
 function formatMarkdown(text) {
     let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => `<pre><code>${code.trim()}</code></pre>`);
+    
+    // Replace code blocks with File Cards
+    html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
+        let codeContent = code.trim();
+        let filename = 'code.txt';
+        const firstLineEnd = codeContent.indexOf('\n');
+        const firstLine = firstLineEnd !== -1 ? codeContent.substring(0, firstLineEnd).trim() : codeContent;
+        
+        if (firstLine.startsWith('// ')) {
+            filename = firstLine.substring(3).trim();
+        } else if (firstLine.startsWith('<!-- ')) {
+            filename = firstLine.replace('<!-- ', '').replace(' -->', '').trim();
+        } else {
+            if (lang === 'html') filename = 'index.html';
+            else if (lang === 'css') filename = 'styles.css';
+            else if (lang === 'javascript' || lang === 'js') filename = 'script.js';
+        }
+        
+        const fileIcon = filename.includes('.html') ? '🌐' : filename.includes('.css') ? '🎨' : filename.includes('.js') ? '⚙️' : '📄';
+        
+        return `<div class="file-card" data-filename="${filename}">
+            <div class="file-card-info">
+                <div class="file-card-icon">${fileIcon}</div>
+                <div>
+                    <div class="file-card-title">${filename}</div>
+                    <div class="file-card-subtitle">Code generated • Click to view</div>
+                </div>
+            </div>
+            <button class="btn btn-secondary btn-sm view-code-btn">View Code</button>
+        </div>`;
+    });
+    
     html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
     html = html.replace(/\n/g, "<br>");
     return html;
@@ -476,12 +540,44 @@ function addMessage(text, sender, save = true) {
     row.appendChild(avatar);
     row.appendChild(bubble);
     history.appendChild(row);
+    
+    // Attach event listeners to newly created View Code buttons
+    bubble.querySelectorAll('.view-code-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const filename = btn.closest('.file-card').dataset.filename;
+            switchToCodeTab(filename);
+        });
+    });
+
     history.scrollTop = history.scrollHeight;
 
     if (save && getCurrentProject()) {
         getCurrentProject().messages.push({ text, sender });
         saveProjects();
     }
+}
+
+function switchToCodeTab(filename) {
+    // Switch mobile view to workspace if on mobile
+    const workspacePanel = document.getElementById('mobile-panel-workspace');
+    const chatPanel = document.getElementById('mobile-panel-chat');
+    if (!workspacePanel.classList.contains('active-mobile')) {
+        chatPanel.classList.remove('active-mobile');
+        workspacePanel.classList.add('active-mobile');
+        document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.mobile-tab[data-target="code"]').classList.add('active');
+    }
+    
+    // Switch desktop tab to code
+    document.querySelectorAll('.ws-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.ws-pane').forEach(p => p.classList.remove('active'));
+    document.querySelector('.ws-tab[data-ws-tab="code"]').classList.add('active');
+    document.getElementById('code-pane').classList.add('active');
+    
+    // Select the specific file in the tree
+    const fileItem = document.querySelector(`.file-item[data-file="${filename}"]`);
+    if (fileItem) fileItem.click();
 }
 
 window.submitInteraction = function(element) {
@@ -495,7 +591,6 @@ window.submitInteraction = function(element) {
     runGeneration(responseText, true);
 }
 
-// Generate Button Stop/Start Logic
 let isGenerating = false;
 let abortController = null;
 
@@ -513,7 +608,6 @@ generateBtn.addEventListener('click', () => {
     }
 });
 
-// Performance Audit Button (Feature 5)
 document.getElementById('audit-btn').addEventListener('click', () => {
     const scriptContent = getCurrentProject().files['script.js'] || "// No script found";
     const auditPrompt = `Please perform a strict Three.js performance audit on the following code. Identify bottlenecks (draw calls, lack of InstancedMesh, heavy shadows, expensive materials, memory leaks). Output your findings clearly, then provide the optimized code block.\n\nCode:\n\`\`\`javascript\n${scriptContent}\n\`\`\``;
@@ -548,7 +642,8 @@ async function runGeneration(prompt, isContinuation = false) {
 
     const thinkingRow = document.createElement('div');
     thinkingRow.classList.add('chat-row');
-    thinkingRow.innerHTML = `<div class="chat-avatar ai">V</div><div class="chat-bubble ai">Vier is thinking...</div>`;
+    // 3-dot animation instead of text
+    thinkingRow.innerHTML = `<div class="chat-avatar ai">V</div><div class="chat-bubble ai"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
     document.getElementById('chat-history').appendChild(thinkingRow);
 
     try {
@@ -568,7 +663,7 @@ async function runGeneration(prompt, isContinuation = false) {
         
         if (currentMode === 'build' && !aiResponseText.includes('<question>') && !aiResponseText.includes('<choose>')) {
             parseAndApplyCode(aiResponseText);
-            updatePreview(); // <--- THIS FIXES THE PREVIEW NOT UPDATING
+            updatePreview();
         }
     } catch (error) {
         thinkingRow.remove();
@@ -583,7 +678,6 @@ async function runGeneration(prompt, isContinuation = false) {
     }
 }
 
-// Smarter Code Parser to handle any backtick format
 function parseAndApplyCode(text) {
     const project = getCurrentProject();
     if (!project) return;
@@ -626,9 +720,6 @@ function parseAndApplyCode(text) {
     }
 }
 
-// ==========================================
-// LIVE PREVIEW IFRAME LOGIC
-// ==========================================
 function updatePreview() {
     const project = getCurrentProject();
     if (!project) return;
@@ -641,7 +732,6 @@ function updatePreview() {
     const styleTag = `<style>${cssContent}<\/style>`;
     const scriptTag = `<script>${jsContent}<\/script>`;
     
-    // Strip body tags from AI's HTML so we can inject cleanly
     const cleanHtml = htmlContent
         .replace(/<script[^>]*src=["']script\.js["'][^>]*><\/script>/gi, '')
         .replace(/<link[^>]*href=["']styles\.css["'][^>]*>/gi, '')
