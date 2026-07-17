@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vier - AI 3D Builder</title>
+    <title>Vier - AI Web & 3D Builder</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@1.0.1/build/stats.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
@@ -39,10 +40,18 @@
             <div class="hero-content">
                 <div class="pill-big">
                     <span class="pill-dot"></span>
-                    Now featuring Templates & 1-Click Publish
+                    Now featuring URL Cloning & Full Web App Builder
                 </div>
-                <h1>Build immersive 3D worlds with natural language</h1>
-                <h2>Vier is your AI co-pilot for the web. Bring your own key, plan your architecture, and generate Three.js scenes instantly.</h2>
+                <h1>Build immersive 3D worlds & Web Apps with AI</h1>
+                <h2>Vier is your AI co-pilot for the web. Bring your own key, plan your architecture, and generate Three.js scenes or modern websites instantly.</h2>
+                
+                <div class="clone-input-group">
+                    <input type="text" id="clone-url-input" class="clone-input" placeholder="Paste a URL to clone layout (e.g., apple.com)" />
+                    <button id="clone-url-btn" class="btn btn-primary">Clone URL</button>
+                </div>
+
+                <div class="hero-divider">OR</div>
+
                 <button id="new-project-btn" class="btn btn-primary btn-lg">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     New Blank Project
@@ -57,15 +66,20 @@
                         <h4>3D Portfolio</h4>
                         <p>An interactive 3D resume with floating geometry.</p>
                     </div>
-                    <div class="template-card" data-template="Product Showcase">
-                        <div class="template-icon">📦</div>
-                        <h4>Product Showcase</h4>
-                        <p>A rotating 3D model with dynamic lighting.</p>
+                    <div class="template-card" data-template="SaaS Landing Page">
+                        <div class="template-icon">🚀</div>
+                        <h4>SaaS Landing Page</h4>
+                        <p>A modern, dark-mode landing page with Tailwind CSS.</p>
                     </div>
                     <div class="template-card" data-template="Interactive Game">
                         <div class="template-icon">🎮</div>
                         <h4>Interactive Game</h4>
                         <p>A simple 3D game with physics and score tracking.</p>
+                    </div>
+                    <div class="template-card" data-template="Dashboard UI">
+                        <div class="template-icon">📊</div>
+                        <h4>Dashboard UI</h4>
+                        <p>An analytics dashboard with charts and tables.</p>
                     </div>
                 </div>
             </div>
@@ -120,7 +134,7 @@
                                 <div class="comp-item" data-prompt="Add a realistic water shader plane that reflects the environment">Water Shader</div>
                                 <div class="comp-item" data-prompt="Add First Person pointer lock controls so I can walk around">First Person Controls</div>
                                 <div class="comp-item" data-prompt="Add glowing smoke particles emitting from the center">Smoke Particles</div>
-                                <div class="comp-item" data-prompt="Add an instanced mesh of 1000 grass blades that sway in the wind">Instanced Grass</div>
+                                <div class="comp-item" data-prompt="Add a modern navigation bar with glassmorphism effect">Glassmorphism Nav</div>
                             </div>
                         </div>
                     </div>
@@ -133,13 +147,13 @@
                 
                 <div id="chat-history" class="chat-history">
                     <div id="chat-empty-state" class="chat-empty-state">
-                        <div class="empty-icon">3D</div>
+                        <div class="empty-icon">V</div>
                         <h4>Start Building</h4>
-                        <p>Ask Vier to generate 3D objects, drop .glb models, or use Agent Mode.</p>
+                        <p>Ask Vier to generate 3D objects, web apps, or landing pages.</p>
                         <div class="quick-prompts">
-                            <button class="quick-prompt">Add a rotating cube</button>
-                            <button class="quick-prompt">Add point lighting</button>
-                            <button class="quick-prompt">Create a sphere</button>
+                            <button class="quick-prompt">Build a 3D portfolio</button>
+                            <button class="quick-prompt">Create a SaaS landing page</button>
+                            <button class="quick-prompt">Generate a cyberpunk texture</button>
                         </div>
                     </div>
                 </div>
@@ -180,6 +194,10 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                             Files & Assets
                         </button>
+                        <button class="ws-tab" data-ws-tab="scene">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                            Scene Graph
+                        </button>
                         <button id="reload-preview-btn" class="btn btn-secondary btn-sm" title="Reload Preview">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                         </button>
@@ -204,6 +222,23 @@
                             <div class="code-editor-content"><pre id="code-viewer">// Select a file</pre></div>
                         </div>
                     </div>
+                    <div id="scene-pane" class="ws-pane">
+                        <div class="scene-explorer">
+                            <div class="scene-header">Scene Hierarchy</div>
+                            <div id="scene-tree" class="scene-tree">
+                                <div class="scene-empty">Run a 3D scene to view the hierarchy.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Terminal -->
+                <div id="terminal-panel" class="terminal-panel">
+                    <div class="terminal-header">
+                        <span>Console</span>
+                        <button id="clear-terminal-btn" class="btn btn-secondary btn-sm">Clear</button>
+                    </div>
+                    <div id="terminal-output" class="terminal-output"></div>
                 </div>
             </section>
         </main>
@@ -250,15 +285,15 @@
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Text Model 📝</label>
+                                <label>Text Model</label>
                                 <select id="api-model-text" class="byok-select"></select>
                             </div>
                             <div class="form-group">
-                                <label>Image Model 🖼️</label>
+                                <label>Image Model</label>
                                 <select id="api-model-image" class="byok-select"></select>
                             </div>
                             <div class="form-group">
-                                <label>Video Model 🎬</label>
+                                <label>Video Model</label>
                                 <select id="api-model-video" class="byok-select"></select>
                             </div>
                         </div>
