@@ -115,7 +115,7 @@ document.getElementById('new-project-btn').addEventListener('click', () => {
         name: `Project ${projects.length + 1}`,
         messages: [],
         files: { ...defaultFiles },
-        thumb: null // Store thumbnail string here
+        thumb: null
     };
     projects.push(newProject);
     saveProjects();
@@ -123,7 +123,7 @@ document.getElementById('new-project-btn').addEventListener('click', () => {
 });
 
 document.getElementById('back-btn').addEventListener('click', () => {
-    captureThumbnail(); // Take screenshot before leaving
+    captureThumbnail();
     showView('landing');
 });
 
@@ -215,7 +215,6 @@ function deleteProject(id) {
     }
 }
 
-// Grabs the canvas from the iframe and saves it as a JPEG
 function captureThumbnail() {
     const project = getCurrentProject();
     if (!project) return;
@@ -225,13 +224,12 @@ function captureThumbnail() {
         if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
             const canvas = iframe.contentDocument.querySelector('canvas');
             if (canvas && canvas.width > 0 && canvas.height > 0) {
-                // Use JPEG to keep local storage size small
                 project.thumb = canvas.toDataURL('image/jpeg', 0.6);
                 saveProjects();
             }
         }
     } catch (e) {
-        console.warn("Could not capture thumbnail. Canvas might be tainted by cross-origin assets.", e);
+        console.warn("Could not capture thumbnail.", e);
     }
 }
 
@@ -736,7 +734,6 @@ async function runGeneration(prompt, isContinuation = false) {
         if (currentMode === 'build' && !aiResponseText.includes('<question>') && !aiResponseText.includes('<choose>')) {
             parseAndApplyCode(aiResponseText);
             updatePreview();
-            // Delay thumbnail capture slightly so the iframe has time to render the new frame
             setTimeout(captureThumbnail, 1000); 
         }
     } catch (error) {
@@ -794,6 +791,9 @@ function parseAndApplyCode(text) {
     }
 }
 
+// ==========================================
+// LIVE PREVIEW IFRAME LOGIC & ERROR CAPTURE
+// ==========================================
 function updatePreview() {
     const project = getCurrentProject();
     if (!project) return;
@@ -813,6 +813,7 @@ function updatePreview() {
     const gltfLoaderScript = '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>';
     const styleTag = `<style>${cssContent}<\/style>`;
     
+    // Intercepts fetch/XHR and captures window.onerror
     const assetInterceptorScript = `
     <script>
         const VIRTUAL_ASSETS = ${JSON.stringify(assetsJson)};
@@ -836,6 +837,10 @@ function updatePreview() {
             return xhr;
         }
         window.XMLHttpRequest = CustomXHR;
+        
+        window.onerror = function(message, source, lineno, colno, error) {
+            window.parent.postMessage({ type: 'iframe_error', error: message + ' (Line: ' + lineno + ')' }, '*');
+        };
     <\/script>`;
     
     const scriptTag = `<script>${jsContent}<\/script>`;
@@ -863,6 +868,37 @@ function updatePreview() {
     
     const iframe = document.getElementById('preview-iframe');
     iframe.srcdoc = fullDoc;
+    
+    // Hide error banner on refresh
+    document.getElementById('error-banner').classList.add('hidden');
+}
+
+// Listen for errors from the iframe
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'iframe_error') {
+        const banner = document.getElementById('error-banner');
+        banner.innerHTML = `
+            <div class="err-msg">⚠️ ${event.data.error}</div>
+            <div class="err-actions">
+                <button class="err-btn" onclick="askAiToFixError()">Ask AI to Fix</button>
+                <button class="err-btn" onclick="dismissError()">Dismiss</button>
+            </div>
+        `;
+        banner.classList.remove('hidden');
+    }
+});
+
+window.dismissError = function() {
+    document.getElementById('error-banner').classList.add('hidden');
+}
+
+window.askAiToFixError = function() {
+    const banner = document.getElementById('error-banner');
+    const errorMsg = banner.querySelector('.err-msg').innerText;
+    const prompt = `The 3D preview threw an error: \n${errorMsg}\n\nPlease fix the code causing this error. Output all 3 files again.`;
+    document.getElementById('prompt-input').value = prompt;
+    dismissError();
+    runGeneration(prompt);
 }
 
 // ==========================================
