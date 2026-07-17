@@ -106,7 +106,7 @@ h3 { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: var(--text-p
 .ws-pane.active { display: block; }
 
 #preview-pane { background: #050505; position: relative; }
-#three-canvas { width: 100%; height: 100%; display: block; }
+#preview-iframe { width: 100%; height: 100%; border: none; background: #050505; }
 .preview-overlay { position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: 4px; font-size: 10px; color: var(--text-tertiary); pointer-events: none; }
 
 .code-explorer { display: flex; height: 100%; }
