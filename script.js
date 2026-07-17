@@ -69,10 +69,9 @@ function showView(viewName) {
         renderProjects();
     } else {
         editorView.classList.add('active');
-        initThreeJS();
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+        updatePreview(); // Load iframe on view open
         updateModelSelector();
-        initDragAndDrop(); // Initialize drop listeners
+        initDragAndDrop();
     }
 }
 
@@ -406,6 +405,7 @@ function initDragAndDrop() {
 
         saveProjects();
         renderFileTree();
+        updatePreview(); // Update iframe to include assets
         
         if (uploadedAssets.length > 0) {
             const promptText = `I uploaded the following assets: ${uploadedAssets.join(', ')}. Please add them to the scene.`;
@@ -430,7 +430,7 @@ modeBtns.forEach(btn => {
 
 function formatMarkdown(text) {
     let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => `<pre><code>${code.trim()}</code></pre>`);
+    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => `<pre><code>${code.trim()}</code></pre>`);
     html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
     html = html.replace(/\n/g, "<br>");
     return html;
@@ -568,6 +568,7 @@ async function runGeneration(prompt, isContinuation = false) {
         
         if (currentMode === 'build' && !aiResponseText.includes('<question>') && !aiResponseText.includes('<choose>')) {
             parseAndApplyCode(aiResponseText);
+            updatePreview(); // <--- THIS FIXES THE PREVIEW NOT UPDATING
         }
     } catch (error) {
         thinkingRow.remove();
@@ -582,16 +583,17 @@ async function runGeneration(prompt, isContinuation = false) {
     }
 }
 
+// Smarter Code Parser to handle any backtick format
 function parseAndApplyCode(text) {
     const project = getCurrentProject();
     if (!project) return;
 
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g;
     let match;
     let filesUpdated = false;
 
     while ((match = codeBlockRegex.exec(text)) !== null) {
-        const lang = match[1] || '';
+        const lang = (match[1] || '').toLowerCase();
         let codeContent = match[2].trim();
         
         let filename = '';
@@ -609,7 +611,7 @@ function parseAndApplyCode(text) {
         if (!filename) {
             if (lang === 'html') filename = 'index.html';
             else if (lang === 'css') filename = 'styles.css';
-            else if (lang === 'javascript' || lang === 'js') filename = 'script.js';
+            else if (lang === 'javascript' || lang === 'js' || lang === '') filename = 'script.js';
         }
 
         if (filename) {
@@ -622,6 +624,45 @@ function parseAndApplyCode(text) {
         saveProjects();
         renderFileTree();
     }
+}
+
+// ==========================================
+// LIVE PREVIEW IFRAME LOGIC
+// ==========================================
+function updatePreview() {
+    const project = getCurrentProject();
+    if (!project) return;
+
+    let htmlContent = project.files['index.html'] || '<html><body>No HTML</body></html>';
+    const jsContent = project.files['script.js'] || '';
+    const cssContent = project.files['styles.css'] || '';
+
+    const threeScript = '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>';
+    const styleTag = `<style>${cssContent}<\/style>`;
+    const scriptTag = `<script>${jsContent}<\/script>`;
+    
+    // Strip body tags from AI's HTML so we can inject cleanly
+    const cleanHtml = htmlContent
+        .replace(/<script[^>]*src=["']script\.js["'][^>]*><\/script>/gi, '')
+        .replace(/<link[^>]*href=["']styles\.css["'][^>]*>/gi, '')
+        .replace(/<\/?body[^>]*>/g, '');
+
+    const fullDoc = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            ${threeScript}
+            ${styleTag}
+        </head>
+        <body>
+            ${cleanHtml}
+            ${scriptTag}
+        </body>
+        </html>
+    `;
+    
+    const iframe = document.getElementById('preview-iframe');
+    iframe.srcdoc = fullDoc;
 }
 
 async function callOpenAI(prompt, sysPrompt, signal) {
@@ -670,13 +711,9 @@ document.querySelectorAll('.ws-tab').forEach(tab => {
         document.querySelectorAll('.ws-pane').forEach(p => p.classList.remove('active'));
         tab.classList.add('active');
         document.getElementById(`${tab.dataset.wsTab}-pane`).classList.add('active');
-        if (tab.dataset.wsTab === 'preview') {
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
-        }
     });
 });
 
-// Mobile Tab Switching (3 tabs)
 document.querySelectorAll('.mobile-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
@@ -686,24 +723,14 @@ document.querySelectorAll('.mobile-tab').forEach(tab => {
         const chatPanel = document.getElementById('mobile-panel-chat');
         const workspacePanel = document.getElementById('mobile-panel-workspace');
         
-        // Hide both main panels first
         chatPanel.classList.remove('active-mobile');
         workspacePanel.classList.remove('active-mobile');
         
         if (target === 'chat') {
-            // Show only chat
             chatPanel.classList.add('active-mobile');
         } else {
-            // Show workspace (Preview or Code)
             workspacePanel.classList.add('active-mobile');
-            
-            // Force click the corresponding workspace tab to switch panes
             document.querySelector(`.ws-tab[data-ws-tab="${target}"]`).click();
-        }
-        
-        // Trigger resize for 3D canvas if preview is shown
-        if (target === 'preview') {
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
         }
     });
 });
@@ -737,7 +764,6 @@ function renderFileTree() {
             document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
             item.classList.add('active');
             const content = project.files[filename];
-            // Prevent rendering massive base64 strings directly in the DOM
             if (typeof content === 'string' && content.startsWith('data:')) {
                 document.getElementById('code-viewer').innerText = `// Binary Asset Preview\n// File: ${filename}\n// Size: ${(content.length / 1024).toFixed(2)} KB\n// Use this path in your code:\nconst path = "${filename}";`;
             } else {
@@ -752,60 +778,6 @@ function renderFileTree() {
         document.getElementById('code-viewer').innerText = project.files[firstFile];
     }
 }
-
-// ==========================================
-// THREE.JS PREVIEW
-// ==========================================
-let scene, camera, renderer, controls;
-let threeInitialized = false;
-
-function initThreeJS() {
-    if (threeInitialized) return;
-    const canvas = document.getElementById('three-canvas');
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x050505);
-
-    camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-    camera.position.set(0, 2, 5);
-
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(5, 10, 7.5);
-    scene.add(dirLight);
-
-    const grid = new THREE.GridHelper(10, 10, 0x2a2a30, 0x1e1e23);
-    scene.add(grid);
-
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, metalness: 0.4, roughness: 0.3 });
-    const cube = new THREE.Mesh(geometry, material);
-    cube.position.y = 0.5;
-    scene.add(cube);
-
-    threeInitialized = true;
-    animate();
-}
-
-function animate() {
-    requestAnimationFrame(animate);
-    if (controls) controls.update();
-    if (renderer && scene && camera) renderer.render(scene, camera);
-}
-
-window.addEventListener('resize', () => {
-    const canvas = document.getElementById('three-canvas');
-    if (canvas && canvas.clientWidth > 0 && camera && renderer) {
-        camera.aspect = canvas.clientWidth / canvas.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    }
-});
 
 // Initial Load
 showView('landing');
