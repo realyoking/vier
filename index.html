@@ -32,7 +32,7 @@
             <div class="hero-content">
                 <div class="pill-big">
                     <span class="pill-dot"></span>
-                    Now supporting Asset Uploads & Performance Audits
+                    Live Sandbox Preview Included
                 </div>
                 <h1>Build immersive 3D worlds with natural language</h1>
                 <h2>Vier is your AI co-pilot for the web. Bring your own key, plan your architecture, and generate Three.js scenes instantly.</h2>
@@ -138,9 +138,10 @@
                 </div>
                 
                 <div class="workspace-content">
+                    <!-- LIVE PREVIEW IFRAME (Fixes code not applying) -->
                     <div id="preview-pane" class="ws-pane active">
-                        <canvas id="three-canvas"></canvas>
-                        <div class="preview-overlay"><span>Orbit Controls Active</span></div>
+                        <iframe id="preview-iframe" title="3D Preview"></iframe>
+                        <div class="preview-overlay"><span>Live Sandbox</span></div>
                     </div>
                     <div id="code-pane" class="ws-pane">
                         <div class="code-explorer">
