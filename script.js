@@ -14,7 +14,8 @@ If you need the user to choose from multiple options, FIRST explain WHY you are 
 
 ## Asset Rules:
 If the user uploads assets (.glb, .png, etc), they are stored in the 'assets/' folder in the virtual file system.
-To load a 3D model, use: new GLTFLoader().load('assets/model.glb', ...)
+The GLTFLoader is ALREADY imported and available globally in the window. Do not import it.
+To load a 3D model, use: new THREE.GLTFLoader().load('assets/model.glb', ...)
 To load a texture, use: new THREE.TextureLoader().load('assets/texture.png', ...)
 
 ## Coding Rules (CRITICAL):
@@ -60,6 +61,8 @@ const defaultFiles = {
     "ai_rules.md": appSettings.aiRules
 };
 
+let pendingAttachments = [];
+
 // ==========================================
 // THEME TOGGLE LOGIC
 // ==========================================
@@ -68,8 +71,8 @@ function setTheme(theme) {
     localStorage.setItem('vier_theme', theme);
     
     const iconHtml = theme === 'dark' 
-        ? '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>' // Sun
-        : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>'; // Moon
+        ? '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>'
+        : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
         
     document.getElementById('theme-icon').innerHTML = iconHtml;
     document.getElementById('theme-icon-editor').innerHTML = iconHtml;
@@ -84,7 +87,6 @@ document.getElementById('theme-toggle-btn-editor').addEventListener('click', () 
     setTheme(newTheme);
 });
 
-// Init theme on load
 setTheme(localStorage.getItem('vier_theme') || 'dark');
 
 // ==========================================
@@ -112,14 +114,18 @@ document.getElementById('new-project-btn').addEventListener('click', () => {
         id: Date.now().toString(),
         name: `Project ${projects.length + 1}`,
         messages: [],
-        files: { ...defaultFiles }
+        files: { ...defaultFiles },
+        thumb: null // Store thumbnail string here
     };
     projects.push(newProject);
     saveProjects();
     openProject(newProject.id);
 });
 
-document.getElementById('back-btn').addEventListener('click', () => showView('landing'));
+document.getElementById('back-btn').addEventListener('click', () => {
+    captureThumbnail(); // Take screenshot before leaving
+    showView('landing');
+});
 
 function openProject(id) {
     currentProjectId = id;
@@ -128,6 +134,8 @@ function openProject(id) {
     
     document.getElementById('editor-project-name').innerText = project.name;
     document.getElementById('chat-history').innerHTML = '';
+    document.getElementById('attachment-preview').innerHTML = '';
+    pendingAttachments = [];
     
     if (project.messages.length === 0) {
         renderEmptyState();
@@ -171,8 +179,17 @@ function renderProjects() {
     projects.forEach(p => {
         const card = document.createElement('div');
         card.className = 'project-card';
+        
+        const thumbStyle = p.thumb ? `style="background-image: url('${p.thumb}')"` : '';
+        const thumbContent = p.thumb ? '' : '3D';
+        
         card.innerHTML = `
-            <div class="project-thumb">3D</div>
+            <div class="project-thumb" ${thumbStyle}>
+                ${thumbContent}
+                <button class="delete-project-btn" data-id="${p.id}" title="Delete Project">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+            </div>
             <div class="project-info">
                 <h4>${p.name}</h4>
                 <p>Last edited: ${new Date(parseInt(p.id)).toLocaleString()}</p>
@@ -181,6 +198,41 @@ function renderProjects() {
         card.addEventListener('click', () => openProject(p.id));
         grid.appendChild(card);
     });
+    
+    document.querySelectorAll('.delete-project-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteProject(btn.dataset.id);
+        });
+    });
+}
+
+function deleteProject(id) {
+    if (confirm('Are you sure you want to delete this project?')) {
+        projects = projects.filter(p => p.id !== id);
+        saveProjects();
+        renderProjects();
+    }
+}
+
+// Grabs the canvas from the iframe and saves it as a JPEG
+function captureThumbnail() {
+    const project = getCurrentProject();
+    if (!project) return;
+    
+    try {
+        const iframe = document.getElementById('preview-iframe');
+        if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+            const canvas = iframe.contentDocument.querySelector('canvas');
+            if (canvas && canvas.width > 0 && canvas.height > 0) {
+                // Use JPEG to keep local storage size small
+                project.thumb = canvas.toDataURL('image/jpeg', 0.6);
+                saveProjects();
+            }
+        }
+    } catch (e) {
+        console.warn("Could not capture thumbnail. Canvas might be tainted by cross-origin assets.", e);
+    }
 }
 
 function saveProjects() { localStorage.setItem('vier_projects', JSON.stringify(projects)); }
@@ -394,8 +446,46 @@ document.getElementById('deploy-gh-btn').addEventListener('click', async () => {
 });
 
 // ==========================================
-// DRAG & DROP ASSET CONTEXT
+// DRAG & DROP ASSET CONTEXT & FILE UPLOAD
 // ==========================================
+function handleFileUpload(files) {
+    const project = getCurrentProject();
+    if (!project) return;
+    const previewArea = document.getElementById('attachment-preview');
+
+    Array.from(files).forEach(file => {
+        const path = `assets/${file.name}`;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            project.files[path] = event.target.result;
+            pendingAttachments.push(path);
+            saveProjects();
+            renderFileTree();
+            updatePreview(); 
+
+            const chip = document.createElement('div');
+            chip.className = 'attachment-chip';
+            chip.innerHTML = `
+                📄 ${file.name}
+                <span class="remove-att" data-path="${path}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </span>
+            `;
+            chip.querySelector('.remove-att').addEventListener('click', (e) => {
+                e.stopPropagation();
+                chip.remove();
+                pendingAttachments = pendingAttachments.filter(p => p !== path);
+                delete project.files[path]; 
+                saveProjects();
+                renderFileTree();
+                updatePreview();
+            });
+            previewArea.appendChild(chip);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 function initDragAndDrop() {
     const editorLayout = document.querySelector('.editor-layout');
     const dropOverlay = document.getElementById('drop-overlay');
@@ -411,41 +501,20 @@ function initDragAndDrop() {
         }
     });
 
-    editorLayout.addEventListener('drop', async (e) => {
+    editorLayout.addEventListener('drop', (e) => {
         e.preventDefault();
         dropOverlay.classList.add('hidden');
-        
-        const files = e.dataTransfer.files;
-        const project = getCurrentProject();
-        if (!project) return;
-
-        let uploadedAssets = [];
-        
-        for (let file of files) {
-            const path = `assets/${file.name}`;
-            const reader = new FileReader();
-            
-            await new Promise((resolve) => {
-                reader.onload = function(event) {
-                    project.files[path] = event.target.result;
-                    uploadedAssets.push(path);
-                    resolve();
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        saveProjects();
-        renderFileTree();
-        updatePreview();
-        
-        if (uploadedAssets.length > 0) {
-            const promptText = `I uploaded the following assets: ${uploadedAssets.join(', ')}. Please add them to the scene.`;
-            document.getElementById('prompt-input').value = promptText;
-            runGeneration(promptText);
-        }
+        handleFileUpload(e.dataTransfer.files);
     });
 }
+
+document.getElementById('upload-btn').addEventListener('click', () => {
+    document.getElementById('file-input').click();
+});
+document.getElementById('file-input').addEventListener('change', (e) => {
+    handleFileUpload(e.target.files);
+    e.target.value = ''; 
+});
 
 // ==========================================
 // CHAT & AI INTERACTION
@@ -460,11 +529,9 @@ modeBtns.forEach(btn => {
     });
 });
 
-// Replaces raw code blocks with File Creation UI Cards
 function formatMarkdown(text) {
     let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     
-    // Replace code blocks with File Cards
     html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
         let codeContent = code.trim();
         let filename = 'code.txt';
@@ -541,7 +608,6 @@ function addMessage(text, sender, save = true) {
     row.appendChild(bubble);
     history.appendChild(row);
     
-    // Attach event listeners to newly created View Code buttons
     bubble.querySelectorAll('.view-code-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -559,7 +625,6 @@ function addMessage(text, sender, save = true) {
 }
 
 function switchToCodeTab(filename) {
-    // Switch mobile view to workspace if on mobile
     const workspacePanel = document.getElementById('mobile-panel-workspace');
     const chatPanel = document.getElementById('mobile-panel-chat');
     if (!workspacePanel.classList.contains('active-mobile')) {
@@ -569,13 +634,11 @@ function switchToCodeTab(filename) {
         document.querySelector('.mobile-tab[data-target="code"]').classList.add('active');
     }
     
-    // Switch desktop tab to code
     document.querySelectorAll('.ws-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.ws-pane').forEach(p => p.classList.remove('active'));
     document.querySelector('.ws-tab[data-ws-tab="code"]').classList.add('active');
     document.getElementById('code-pane').classList.add('active');
     
-    // Select the specific file in the tree
     const fileItem = document.querySelector(`.file-item[data-file="${filename}"]`);
     if (fileItem) fileItem.click();
 }
@@ -603,7 +666,7 @@ generateBtn.addEventListener('click', () => {
     } else {
         const promptInput = document.getElementById('prompt-input');
         const prompt = promptInput.value.trim();
-        if (!prompt) return;
+        if (!prompt && pendingAttachments.length === 0) return;
         runGeneration(prompt);
     }
 });
@@ -629,11 +692,21 @@ function updateGenerateBtnUI() {
 
 async function runGeneration(prompt, isContinuation = false) {
     if (!appSettings.apiKey) return alert("Set API Key in settings.");
-    if (!isContinuation) {
-        addMessage(prompt, 'user');
+    
+    let displayText = prompt;
+    
+    if (pendingAttachments.length > 0) {
+        displayText = prompt + (prompt ? `\n\n(Attached: ${pendingAttachments.join(', ')})` : `(Attached: ${pendingAttachments.join(', ')})`);
+        let finalPrompt = prompt + `\n\nI have attached the following assets: ${pendingAttachments.join(', ')}. Please use them in the scene.`;
+        
+        addMessage(finalPrompt, 'user'); 
         document.getElementById('prompt-input').value = '';
+        document.getElementById('attachment-preview').innerHTML = ''; 
+        pendingAttachments = []; 
     } else {
-        addMessage(prompt, 'user');
+        if (!displayText.trim()) displayText = "Process attached assets.";
+        addMessage(displayText, 'user');
+        document.getElementById('prompt-input').value = '';
     }
     
     isGenerating = true;
@@ -642,7 +715,6 @@ async function runGeneration(prompt, isContinuation = false) {
 
     const thinkingRow = document.createElement('div');
     thinkingRow.classList.add('chat-row');
-    // 3-dot animation instead of text
     thinkingRow.innerHTML = `<div class="chat-avatar ai">V</div><div class="chat-bubble ai"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
     document.getElementById('chat-history').appendChild(thinkingRow);
 
@@ -651,11 +723,11 @@ async function runGeneration(prompt, isContinuation = false) {
         const sysPrompt = `Mode: ${currentMode}\nRules:\n${appSettings.aiRules}\nCurrent Files: ${JSON.stringify(getCurrentProject().files)}`;
         
         if (appSettings.provider === 'openai' || appSettings.provider === 'custom') {
-            aiResponseText = await callOpenAI(prompt, sysPrompt, abortController.signal);
+            aiResponseText = await callOpenAI(sysPrompt, abortController.signal);
         } else if (appSettings.provider === 'anthropic') {
-            aiResponseText = await callAnthropic(prompt, sysPrompt, abortController.signal);
+            aiResponseText = await callAnthropic(sysPrompt, abortController.signal);
         } else if (appSettings.provider === 'gemini') {
-            aiResponseText = await callGemini(prompt, sysPrompt, abortController.signal);
+            aiResponseText = await callGemini(sysPrompt, abortController.signal);
         }
 
         thinkingRow.remove();
@@ -664,6 +736,8 @@ async function runGeneration(prompt, isContinuation = false) {
         if (currentMode === 'build' && !aiResponseText.includes('<question>') && !aiResponseText.includes('<choose>')) {
             parseAndApplyCode(aiResponseText);
             updatePreview();
+            // Delay thumbnail capture slightly so the iframe has time to render the new frame
+            setTimeout(captureThumbnail, 1000); 
         }
     } catch (error) {
         thinkingRow.remove();
@@ -728,8 +802,42 @@ function updatePreview() {
     const jsContent = project.files['script.js'] || '';
     const cssContent = project.files['styles.css'] || '';
 
+    let assetsJson = {};
+    Object.keys(project.files).forEach(path => {
+        if (path.startsWith('assets/')) {
+            assetsJson[path] = project.files[path]; 
+        }
+    });
+
     const threeScript = '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>';
+    const gltfLoaderScript = '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>';
     const styleTag = `<style>${cssContent}<\/style>`;
+    
+    const assetInterceptorScript = `
+    <script>
+        const VIRTUAL_ASSETS = ${JSON.stringify(assetsJson)};
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+            if (typeof url === 'string' && VIRTUAL_ASSETS[url]) {
+                return originalFetch.call(this, VIRTUAL_ASSETS[url], options);
+            }
+            return originalFetch.apply(this, arguments);
+        };
+        const OriginalXHR = window.XMLHttpRequest;
+        function CustomXHR() {
+            const xhr = new OriginalXHR();
+            const originalOpen = xhr.open;
+            xhr.open = function(method, url, ...args) {
+                if (typeof url === 'string' && VIRTUAL_ASSETS[url]) {
+                    url = VIRTUAL_ASSETS[url]; 
+                }
+                return originalOpen.call(this, method, url, ...args);
+            };
+            return xhr;
+        }
+        window.XMLHttpRequest = CustomXHR;
+    <\/script>`;
+    
     const scriptTag = `<script>${jsContent}<\/script>`;
     
     const cleanHtml = htmlContent
@@ -742,10 +850,12 @@ function updatePreview() {
         <html>
         <head>
             ${threeScript}
+            ${gltfLoaderScript}
             ${styleTag}
         </head>
         <body>
             ${cleanHtml}
+            ${assetInterceptorScript}
             ${scriptTag}
         </body>
         </html>
@@ -755,12 +865,25 @@ function updatePreview() {
     iframe.srcdoc = fullDoc;
 }
 
-async function callOpenAI(prompt, sysPrompt, signal) {
+// ==========================================
+// API CALLS
+// ==========================================
+async function callOpenAI(sysPrompt, signal) {
+    const project = getCurrentProject();
+    if (!project) throw new Error("No project selected");
+    
+    const history = project.messages.map(msg => {
+        return { role: msg.sender === 'ai' ? 'assistant' : 'user', content: msg.text };
+    });
+
     const endpoint = appSettings.provider === 'custom' ? `${appSettings.baseUrl}/chat/completions` : 'https://api.openai.com/v1/chat/completions';
     const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${appSettings.apiKey}` },
-        body: JSON.stringify({ model: appSettings.model || "gpt-4o", messages: [{ role: "system", content: sysPrompt }, { role: "user", content: prompt }] }),
+        body: JSON.stringify({ 
+            model: appSettings.model || "gpt-4o", 
+            messages: [{ role: "system", content: sysPrompt }, ...history] 
+        }),
         signal: signal
     });
     const data = await res.json();
@@ -768,11 +891,23 @@ async function callOpenAI(prompt, sysPrompt, signal) {
     return data.choices[0].message.content;
 }
 
-async function callAnthropic(prompt, sysPrompt, signal) {
+async function callAnthropic(sysPrompt, signal) {
+    const project = getCurrentProject();
+    if (!project) throw new Error("No project selected");
+    
+    const history = project.messages.map(msg => {
+        return { role: msg.sender === 'ai' ? 'assistant' : 'user', content: msg.text };
+    });
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': appSettings.apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: appSettings.model || "claude-3-5-sonnet-20241022", system: sysPrompt, messages: [{ role: 'user', content: prompt }], max_tokens: 1024 }),
+        body: JSON.stringify({ 
+            model: appSettings.model || "claude-3-5-sonnet-20241022", 
+            system: sysPrompt, 
+            messages: history, 
+            max_tokens: 4096 
+        }),
         signal: signal
     });
     const data = await res.json();
@@ -780,11 +915,21 @@ async function callAnthropic(prompt, sysPrompt, signal) {
     return data.content[0].text;
 }
 
-async function callGemini(prompt, sysPrompt, signal) {
+async function callGemini(sysPrompt, signal) {
+    const project = getCurrentProject();
+    if (!project) throw new Error("No project selected");
+    
+    const history = project.messages.map(msg => {
+        return { role: msg.sender === 'ai' ? 'model' : 'user', parts: [{ text: msg.text }] };
+    });
+
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${appSettings.model || 'gemini-1.5-flash'}:generateContent?key=${appSettings.apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: sysPrompt }] }, contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({ 
+            system_instruction: { parts: [{ text: sysPrompt }] }, 
+            contents: history 
+        }),
         signal: signal
     });
     const data = await res.json();
