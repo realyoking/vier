@@ -2,47 +2,48 @@
 // STATE & STORAGE MANAGEMENT
 // ==========================================
 const DEFAULT_AI_RULES = `# AI Rules (ai_rules.md)
-You are Vier, an expert AI 3D assistant. 
-Your goal is to help the user build Three.js scenes.
+You are Vier, an expert AI web developer and 3D assistant. 
+Your goal is to help the user build stunning web apps, landing pages, and Three.js scenes.
+
+## UI / UX Design Rules (CRITICAL):
+- You have access to Tailwind CSS (via CDN) in the preview. USE IT for styling websites and landing pages.
+- DO NOT use emojis in UI text (buttons, headers, etc.). 
+- DO NOT use generic purple/blue gradients. Use modern, sleek aesthetics (e.g., dark mode, glassmorphism, subtle accents, high contrast typography).
+- Use modern fonts (Inter, Roboto, etc.) via Google Fonts.
 
 ## Interaction Rules:
-If you need to ask the user a question to clarify requirements, FIRST explain WHY you are asking, then output EXACTLY this tag and nothing else:
+If you need to ask the user a question to clarify requirements, output EXACTLY this tag:
 <question>Your question here?</question>
 
-If you need the user to choose from multiple options, FIRST explain WHY you are asking, then output EXACTLY this tag with valid JSON and nothing else:
+If you need the user to choose from multiple options, output EXACTLY this tag with valid JSON:
 <choose>[{"label":"Option 1"},{"label":"Option 2"},{"label":"Option 3"},{"label":"Option 4"}]</choose>
 
-## Asset Rules:
-If the user uploads assets (.glb, .png, etc), they are stored in the 'assets/' folder in the virtual file system.
-The GLTFLoader is ALREADY imported and available globally in the window. Do not import it.
-To load a 3D model, use: new THREE.GLTFLoader().load('assets/model.glb', ...)
-To load a texture, use: new THREE.TextureLoader().load('assets/texture.png', ...)
-
 ## Image Generation Rules:
-If the user asks to generate a texture or image, output EXACTLY this tag and nothing else:
+If the user asks to generate an image, texture, or asset, output EXACTLY this tag:
 <generate_image>{"prompt": "detailed description of image", "filename": "name.png"}</generate_image>
 
-## Coding Rules (CRITICAL):
-When in 'build' or 'agent' mode, you MUST ALWAYS output the complete, updated content for ALL THREE files: index.html, script.js, and styles.css. NEVER omit a file.
-Use standard Three.js r128 syntax.
+## Database Rules (localStorage):
+If the user asks to save data, create a database, or store user input, use the browser's localStorage API.
 
-To update files, output the code in standard markdown code blocks. 
-To specify which file the code belongs to, put the filename in a comment on the VERY FIRST LINE of the code block.
+## Multi-Page Routing:
+If the user asks for multiple pages, create separate HTML files. Vier automatically intercepts <a> clicks.
+
+## Coding Rules:
+- If building a 3D scene or game, use Three.js r128.
+- If building a website, use HTML + Tailwind CSS + Vanilla JS.
+- You MUST ALWAYS output the complete, updated content for ALL THREE files: index.html, script.js, and styles.css.
+- To specify which file the code belongs to, put the filename in a comment on the VERY FIRST LINE of the code block. DO NOT use spaces before the filename.
+
 Example:
 \`\`\`html
-<!-- index.html -->
+<!--index.html-->
 <html>...</html>
 \`\`\`
 
 \`\`\`javascript
-// script.js
+//script.js
 const scene = new THREE.Scene();
 \`\`\`
-
-## Performance Auditing:
-If the user clicks "Audit", analyze the provided code for Three.js performance bottlenecks.
-Look for: Excessive draw calls (suggest InstancedMesh), heavy shadow maps, unoptimized geometries, memory leaks (dispose not called).
-Provide a clear report of issues, then output the fixed code for ALL THREE files.
 `;
 
 let appSettings = JSON.parse(localStorage.getItem('vier_settings')) || {
@@ -62,10 +63,33 @@ let projects = JSON.parse(localStorage.getItem('vier_projects')) || [];
 let currentProjectId = null;
 
 const defaultFiles = {
-    "index.html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>3D Scene</title>\n</head>\n<body>\n  <script src=\"three.js\"></script>\n  <script src=\"script.js\"></script>\n</body>\n</html>",
-    "script.js": "// AI will generate Three.js code here\nconst scene = new THREE.Scene();",
-    "styles.css": "body { margin: 0; }",
+    "index.html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>Vier App</title>\n</head>\n<body>\n  <div id='app'>Hello Vier</div>\n  <script src=\"script.js\"></script>\n</body>\n</html>",
+    "script.js": "// AI will generate code here\nconsole.log('Vier App Ready');",
+    "styles.css": "body { margin: 0; font-family: sans-serif; }",
     "ai_rules.md": appSettings.aiRules
+};
+
+const templates = {
+    "3D Portfolio": {
+        "index.html": "<!DOCTYPE html><html><head><title>3D Portfolio</title><link rel=\"stylesheet\" href=\"styles.css\"></head><body><script src=\"three.js\"></script><script src=\"script.js\"></script></body></html>",
+        "script.js": "const scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);\ncamera.position.z = 5;\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(window.innerWidth, window.innerHeight);\ndocument.body.appendChild(renderer.domElement);\n\nconst geometry = new THREE.IcosahedronGeometry(1, 0);\nconst material = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, metalness: 0.8, roughness: 0.2 });\nconst mesh = new THREE.Mesh(geometry, material);\nscene.add(mesh);\n\nconst light = new THREE.DirectionalLight(0xffffff, 1);\nlight.position.set(2, 2, 2);\nscene.add(light);\n\nfunction animate() {\n  requestAnimationFrame(animate);\n  mesh.rotation.x += 0.01;\n  mesh.rotation.y += 0.01;\n  renderer.render(scene, camera);\n}\nanimate();",
+        "styles.css": "body { margin: 0; overflow: hidden; background: #000; }"
+    },
+    "Product Showcase": {
+        "index.html": "<!DOCTYPE html><html><head><title>Product Showcase</title><link rel=\"stylesheet\" href=\"styles.css\"></head><body><script src=\"three.js\"></script><script src=\"script.js\"></script></body></html>",
+        "script.js": "const scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);\ncamera.position.set(0, 2, 5);\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(window.innerWidth, window.innerHeight);\ndocument.body.appendChild(renderer.domElement);\n\nconst geometry = new THREE.TorusKnotGeometry(0.8, 0.25, 100, 16);\nconst material = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.9, roughness: 0.1 });\nconst mesh = new THREE.Mesh(geometry, material);\nscene.add(mesh);\n\nconst light = new THREE.PointLight(0xffffff, 1.5);\nlight.position.set(5, 5, 5);\nscene.add(light);\n\nfunction animate() {\n  requestAnimationFrame(animate);\n  mesh.rotation.y += 0.005;\n  renderer.render(scene, camera);\n}\nanimate();",
+        "styles.css": "body { margin: 0; overflow: hidden; background: #111; }"
+    },
+    "Interactive Game": {
+        "index.html": "<!DOCTYPE html><html><head><title>3D Game</title><link rel=\"stylesheet\" href=\"styles.css\"></head><body><h1>Score: <span id=\"score\">0</span></h1><script src=\"three.js\"></script><script src=\"script.js\"></script></body></html>",
+        "script.js": "const scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);\ncamera.position.z = 5;\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(window.innerWidth, window.innerHeight);\ndocument.body.appendChild(renderer.domElement);\n\nlet score = 0;\nconst player = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({color: 0x00ff00}));\nscene.add(player);\n\nconst enemy = new THREE.Mesh(new THREE.SphereGeometry(), new THREE.MeshStandardMaterial({color: 0xff0000}));\nenemy.position.x = 3;\nscene.add(enemy);\n\nscene.add(new THREE.DirectionalLight(0xffffff, 1));\n\ndocument.addEventListener('keydown', (e) => {\n  if(e.key === 'ArrowUp') player.position.y += 0.1;\n  if(e.key === 'ArrowDown') player.position.y -= 0.1;\n  if(e.key === 'ArrowLeft') player.position.x -= 0.1;\n  if(e.key === 'ArrowRight') player.position.x += 0.1;\n});\n\nfunction animate() {\n  requestAnimationFrame(animate);\n  enemy.position.x -= 0.02;\n  if(enemy.position.x < -3) enemy.position.x = 3;\n  \n  if(player.position.distanceTo(enemy.position) < 1) {\n    score++;\n    document.getElementById('score').innerText = score;\n    enemy.position.x = 3;\n    enemy.position.y = Math.random() * 4 - 2;\n  }\n  \n  renderer.render(scene, camera);\n}\nanimate();",
+        "styles.css": "body { margin: 0; overflow: hidden; background: #222; color: white; font-family: sans-serif; } h1 { position: absolute; top: 10px; left: 10px; z-index: 10; }"
+    },
+    "SaaS Landing Page": {
+        "index.html": "<!DOCTYPE html><html><head><title>SaaS Landing</title><script src=\"https://cdn.tailwindcss.com\"></script><link rel=\"stylesheet\" href=\"styles.css\"></head><body class=\"bg-zinc-900 text-white\"><nav class=\"flex justify-between p-6\"><div class=\"font-bold text-xl\">VierCRM</div><button class=\"bg-indigo-600 px-4 py-2 rounded-lg\">Get Started</button></nav><header class=\"text-center py-20\"><h1 class=\"text-6xl font-extrabold tracking-tight\">The Future of CRM</h1><p class=\"text-zinc-400 mt-4 text-xl\">Manage your customers with AI-powered insights.</p><button class=\"bg-indigo-600 px-8 py-4 rounded-lg text-lg font-bold mt-8\">Start Free Trial</button></header><script src=\"script.js\"></script></body></html>",
+        "script.js": "console.log('Landing page loaded');",
+        "styles.css": "body { font-family: 'Inter', sans-serif; }"
+    }
 };
 
 let pendingAttachments = [];
@@ -121,12 +145,28 @@ document.getElementById('new-project-btn').addEventListener('click', () => {
         id: Date.now().toString(),
         name: `Project ${projects.length + 1}`,
         messages: [],
-        files: { ...defaultFiles },
+        files: JSON.parse(JSON.stringify(defaultFiles)),
         thumb: null
     };
     projects.push(newProject);
     saveProjects();
     openProject(newProject.id);
+});
+
+document.querySelectorAll('.template-card').forEach(card => {
+    card.addEventListener('click', () => {
+        const templateName = card.dataset.template;
+        const newProject = {
+            id: Date.now().toString(),
+            name: templateName,
+            messages: [],
+            files: JSON.parse(JSON.stringify(templates[templateName])),
+            thumb: null
+        };
+        projects.push(newProject);
+        saveProjects();
+        openProject(newProject.id);
+    });
 });
 
 document.getElementById('back-btn').addEventListener('click', () => {
@@ -160,11 +200,11 @@ function renderEmptyState() {
         <div id="chat-empty-state" class="chat-empty-state">
             <div class="empty-icon">3D</div>
             <h4>Start Building</h4>
-            <p>Ask Vier to generate 3D objects, drop .glb models, or use Agent Mode.</p>
+            <p>Ask Vier to generate 3D objects, web apps, or landing pages.</p>
             <div class="quick-prompts">
-                <button class="quick-prompt">Add a rotating cube</button>
-                <button class="quick-prompt">Add point lighting</button>
-                <button class="quick-prompt">Create a sphere</button>
+                <button class="quick-prompt">Build a 3D portfolio</button>
+                <button class="quick-prompt">Create a SaaS landing page</button>
+                <button class="quick-prompt">Generate a cyberpunk texture</button>
             </div>
         </div>
     `;
@@ -281,7 +321,6 @@ function populateSettings() {
         select.disabled = false;
     }
 
-    // Populate Model Selects
     const textSel = document.getElementById('api-model-text');
     const imgSel = document.getElementById('api-model-image');
     const vidSel = document.getElementById('api-model-video');
@@ -363,7 +402,6 @@ document.getElementById('fetch-models-btn').addEventListener('click', async () =
         const data = await res.json();
         if (data.data) {
             appSettings.fetchedModels = data.data.map(m => m.id);
-            // Heuristic for default selections
             appSettings.textModel = data.data.find(m => m.id.includes('gpt-4o'))?.id || data.data[0].id;
             appSettings.imageModel = data.data.find(m => m.id.includes('dall-e-3'))?.id || '';
             localStorage.setItem('vier_settings', JSON.stringify(appSettings));
@@ -404,7 +442,7 @@ function updateModelSelector() {
 }
 
 // ==========================================
-// GITHUB INTEGRATION
+// GITHUB INTEGRATION & PUBLISH
 // ==========================================
 document.getElementById('fetch-repos-btn').addEventListener('click', async () => {
     const pat = document.getElementById('gh-pat').value.trim();
@@ -440,12 +478,14 @@ async function getGithubOwner() {
     return userData.login;
 }
 
-document.getElementById('sync-gh-btn').addEventListener('click', async () => {
+document.getElementById('publish-btn').addEventListener('click', async () => {
     if (!appSettings.ghPat || !appSettings.ghRepo) return alert("Set GitHub PAT and Repo in settings.");
     
     const project = getCurrentProject();
     let repoFullName = appSettings.ghRepo;
-    
+    const publishBtn = document.getElementById('publish-btn');
+    publishBtn.innerText = "Publishing...";
+
     try {
         if (repoFullName.startsWith('NEW:')) {
             const newRepoName = repoFullName.substring(4);
@@ -473,28 +513,53 @@ document.getElementById('sync-gh-btn').addEventListener('click', async () => {
                 body: JSON.stringify({ message: `Vier Sync: Update ${path}`, content: toBase64(content), sha: sha })
             });
         }
-        alert(`Synced to GitHub: ${repoFullName}`);
-    } catch (error) { alert("Sync failed: " + error.message); }
+
+        const owner = repoFullName.split('/')[0];
+        const repoName = repoFullName.split('/')[1];
+        
+        await fetch(`https://api.github.com/repos/${repoFullName}/pages`, {
+            method: 'POST',
+            headers: { 'Authorization': `token ${appSettings.ghPat}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: { branch: "main", path: "/" } })
+        });
+
+        alert(`Success! Your site is deploying to: https://${owner}.github.io/${repoName}`);
+        window.open(`https://${owner}.github.io/${repoName}`, '_blank');
+    } catch (error) { 
+        alert("Publish failed: " + error.message); 
+    } finally {
+        publishBtn.innerText = "Publish";
+    }
 });
 
-document.getElementById('deploy-gh-btn').addEventListener('click', async () => {
-    if (!appSettings.ghPat || !appSettings.ghRepo) return alert("Set GitHub PAT and Repo in settings.");
-    if (appSettings.ghRepo.startsWith('NEW:')) return alert("Sync the repository first to create it.");
+// ==========================================
+// SHARE PROJECT (URL HASH)
+// ==========================================
+document.getElementById('share-btn').addEventListener('click', () => {
+    const project = getCurrentProject();
+    if (!project) return;
     
-    const repoFullName = appSettings.ghRepo;
-    const owner = repoFullName.split('/')[0];
-    const repoName = repoFullName.split('/')[1];
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(project))));
+    const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
     
-    const pagesRes = await fetch(`https://api.github.com/repos/${repoFullName}/pages`, {
-        method: 'POST',
-        headers: { 'Authorization': `token ${appSettings.ghPat}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source: { branch: "main", path: "/" } })
+    navigator.clipboard.writeText(url).then(() => {
+        alert("Shareable link copied to clipboard!");
     });
-    
-    if (pagesRes.status === 201) alert(`Deploying! Live at https://${owner}.github.io/${repoName} in a few minutes.`);
-    else if (pagesRes.status === 422) alert("GitHub Pages is already enabled for this repo.");
-    else alert("Failed to deploy. Check console.");
 });
+
+function checkSharedProject() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#share=')) {
+        try {
+            const encoded = hash.substring(7);
+            const project = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+            projects.push(project);
+            saveProjects();
+            history.replaceState(null, null, window.location.pathname);
+            openProject(project.id);
+        } catch(e) { console.error("Failed to load shared project", e); }
+    }
+}
 
 // ==========================================
 // DRAG & DROP ASSET CONTEXT & FILE UPLOAD
@@ -567,6 +632,10 @@ document.getElementById('file-input').addEventListener('change', (e) => {
     e.target.value = ''; 
 });
 
+document.getElementById('reload-preview-btn').addEventListener('click', () => {
+    updatePreview();
+});
+
 // ==========================================
 // COMPONENT LIBRARY
 // ==========================================
@@ -598,16 +667,22 @@ modeBtns.forEach(btn => {
 function formatMarkdown(text) {
     let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     
+    // Image Markdown Support
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; border-radius: 8px; margin-top: 8px;">');
+    
     html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
         let codeContent = code.trim();
         let filename = 'code.txt';
         const firstLineEnd = codeContent.indexOf('\n');
         const firstLine = firstLineEnd !== -1 ? codeContent.substring(0, firstLineEnd).trim() : codeContent;
         
-        if (firstLine.startsWith('// ')) {
-            filename = firstLine.substring(3).trim();
-        } else if (firstLine.startsWith('<!-- ')) {
-            filename = firstLine.replace('<!-- ', '').replace(' -->', '').trim();
+        if (firstLine.startsWith('//')) {
+            filename = firstLine.replace(/^\/\/\s*/, '').trim();
+            codeContent = firstLineEnd !== -1 ? codeContent.substring(firstLineEnd + 1).trim() : '';
+        } else if (firstLine.startsWith('<!--')) {
+            const matchHtml = firstLine.match(/<!--\s*(.*?)\s*-->/);
+            if(matchHtml) filename = matchHtml[1];
+            codeContent = firstLineEnd !== -1 ? codeContent.substring(firstLineEnd + 1).trim() : '';
         } else {
             if (lang === 'html') filename = 'index.html';
             else if (lang === 'css') filename = 'styles.css';
@@ -784,19 +859,14 @@ async function runAgentSequence() {
     cursor.classList.remove('hidden');
     
     await moveAgentCursor('#prompt-input', 'Analyzing prompt...');
-    
-    // 1. Think & Write Reply
     await moveAgentCursor('#chat-history', 'Thinking...');
     
-    // 2. Write Code
     await moveAgentCursor('.ws-tab[data-ws-tab="code"]', 'Writing code...');
     document.querySelector('.ws-tab[data-ws-tab="code"]').click();
     
-    // 3. Test Scene
     await moveAgentCursor('.ws-tab[data-ws-tab="preview"]', 'Testing scene...');
     document.querySelector('.ws-tab[data-ws-tab="preview"]').click();
     
-    // Simulate playing the scene
     const previewPane = document.getElementById('preview-pane');
     const rect = previewPane.getBoundingClientRect();
     
@@ -812,15 +882,16 @@ async function runAgentSequence() {
     cursor.style.top = `${rect.top + 200}px`;
     await sleep(600);
     
-    // 4. Done
     await moveAgentCursor('#generate-btn', 'Task complete!');
     await sleep(500);
     cursor.classList.add('hidden');
 }
 
 async function runGeneration(prompt, isContinuation = false) {
-    if (!appSettings.apiKey) return alert("Set API Key in settings.");
+    if (!appSettings.apiKey) return alert("Please set your API Key in Settings.");
+    if (!appSettings.textModel) return alert("Please select a Text Model in Settings (Click 'Fetch Models').");
     
+    const selectedModelType = document.getElementById('chat-model-selector').value;
     let displayText = prompt;
     let finalPrompt = prompt;
     
@@ -849,25 +920,39 @@ async function runGeneration(prompt, isContinuation = false) {
     const thinkingBubble = thinkingRow.querySelector('.chat-bubble');
 
     try {
+        // Direct Image Generation Mode
+        if (selectedModelType === 'image' && !isContinuation) {
+            thinkingRow.remove();
+            addMessage(`Generating image: ${prompt}...`, 'ai');
+            const imgUrl = await generateImage(prompt);
+            if (imgUrl) {
+                const filename = `assets/generated_${Date.now()}.png`;
+                getCurrentProject().files[filename] = imgUrl;
+                saveProjects();
+                renderFileTree();
+                addMessage(`![Generated Image](${imgUrl})`, 'ai');
+                addMessage("Image generated and saved to assets. Ask me to build a website around it!", 'ai');
+            }
+            isGenerating = false;
+            updateGenerateBtnUI();
+            return;
+        }
+
         let aiResponseText = "";
         const sysPrompt = `Mode: ${currentMode}\nRules:\n${appSettings.aiRules}\nCurrent Files: ${JSON.stringify(getCurrentProject().files)}`;
         
-        // Streaming Handler
         const onChunk = (delta) => {
             aiResponseText += delta;
             
-            // If in Agent Mode, animate cursor based on content
             if (currentMode === 'agent') {
                 const cursor = document.getElementById('agent-cursor');
                 if (!cursor.classList.contains('hidden')) {
-                    // If code block starts, move to code tab
                     if (aiResponseText.includes('```')) {
                         if (!cursor.dataset.coding) {
                             cursor.dataset.coding = 'true';
                             document.querySelector('.ws-tab[data-ws-tab="code"]').click();
                             moveAgentCursor('#code-viewer', 'Writing code...');
                         }
-                        // Update code viewer in real-time
                         const codeStartIndex = aiResponseText.indexOf('```');
                         let codePart = aiResponseText.substring(codeStartIndex + 3);
                         const firstNewline = codePart.indexOf('\n');
@@ -876,13 +961,11 @@ async function runGeneration(prompt, isContinuation = false) {
                         }
                         document.getElementById('code-viewer').innerText = codePart;
                     } else {
-                        // Otherwise, update chat bubble
                         thinkingBubble.innerHTML = formatMarkdown(aiResponseText);
                         moveAgentCursor('#chat-history', 'Thinking...');
                     }
                 }
             } else {
-                // Normal Mode: Just update chat bubble
                 thinkingBubble.innerHTML = formatMarkdown(aiResponseText);
             }
         };
@@ -898,7 +981,6 @@ async function runGeneration(prompt, isContinuation = false) {
         thinkingRow.remove();
         addMessage(aiResponseText, 'ai');
         
-        // Check for Image Generation Tag
         const imageGenMatch = aiResponseText.match(/<generate_image>(.*?)<\/generate_image>/s);
         if (imageGenMatch) {
             const imgData = JSON.parse(imageGenMatch[1]);
@@ -908,6 +990,7 @@ async function runGeneration(prompt, isContinuation = false) {
                 getCurrentProject().files[`assets/${imgData.filename}`] = imgUrl;
                 saveProjects();
                 renderFileTree();
+                addMessage(`![Generated Image](${imgUrl})`, 'ai');
                 runGeneration(`The image has been generated and saved at assets/${imgData.filename}. Please update the code to use it.`, true);
                 return;
             }
@@ -918,7 +1001,6 @@ async function runGeneration(prompt, isContinuation = false) {
             updatePreview();
             
             if (currentMode === 'agent') {
-                // Run the final visual agent sequence (testing the game)
                 await runAgentSequence();
             } else {
                 setTimeout(captureThumbnail, 1000); 
@@ -941,10 +1023,15 @@ async function runGeneration(prompt, isContinuation = false) {
 async function generateImage(prompt) {
     if (!appSettings.imageModel) return null;
     try {
-        const res = await fetch('https://api.openai.com/v1/images/generations', {
+        let endpoint = 'https://api.openai.com/v1/images/generations';
+        if (appSettings.provider === 'custom' && appSettings.baseUrl) {
+            endpoint = `${appSettings.baseUrl}/images/generations`;
+        }
+        
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${appSettings.apiKey}` },
-            body: JSON.stringify({ model: appSettings.imageModel, prompt: prompt, n: 1, size: '512x512' })
+            body: JSON.stringify({ model: appSettings.imageModel, prompt: prompt, n: 1, size: '1024x1024' })
         });
         const data = await res.json();
         if (data.data && data.data[0].url) {
@@ -955,9 +1042,12 @@ async function generateImage(prompt) {
                 reader.onloadend = () => resolve(reader.result);
                 reader.readAsDataURL(blob);
             });
+        } else if (data.data && data.data[0].b64_json) {
+            return `data:image/png;base64,${data.data[0].b64_json}`;
         }
     } catch (e) {
         console.error("Image gen failed", e);
+        addMessage("Image generation failed. Make sure your provider supports it.", 'ai');
         return null;
     }
 }
@@ -978,12 +1068,13 @@ function parseAndApplyCode(text) {
         const firstLineEnd = codeContent.indexOf('\n');
         const firstLine = firstLineEnd !== -1 ? codeContent.substring(0, firstLineEnd).trim() : codeContent;
         
-        if (firstLine.startsWith('// ')) {
-            filename = firstLine.substring(3).trim();
-            codeContent = codeContent.substring(firstLineEnd + 1).trim();
-        } else if (firstLine.startsWith('<!-- ')) {
-            filename = firstLine.replace('<!-- ', '').replace(' -->', '').trim();
-            codeContent = codeContent.substring(firstLineEnd + 1).trim();
+        if (firstLine.startsWith('//')) {
+            filename = firstLine.replace(/^\/\/\s*/, '').trim();
+            codeContent = firstLineEnd !== -1 ? codeContent.substring(firstLineEnd + 1).trim() : '';
+        } else if (firstLine.startsWith('<!--')) {
+            const matchHtml = firstLine.match(/<!--\s*(.*?)\s*-->/);
+            if(matchHtml) filename = matchHtml[1];
+            codeContent = firstLineEnd !== -1 ? codeContent.substring(firstLineEnd + 1).trim() : '';
         }
 
         if (!filename) {
@@ -1011,7 +1102,8 @@ function updatePreview() {
     const project = getCurrentProject();
     if (!project) return;
 
-    let htmlContent = project.files['index.html'] || '<html><body>No HTML</body></html>';
+    let activePage = project.activePage || 'index.html';
+    let htmlContent = project.files[activePage] || '<html><body>404 - Page not found</body></html>';
     const jsContent = project.files['script.js'] || '';
     const cssContent = project.files['styles.css'] || '';
 
@@ -1024,6 +1116,7 @@ function updatePreview() {
 
     const threeScript = '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>';
     const gltfLoaderScript = '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>';
+    const tailwindScript = '<script src="https://cdn.tailwindcss.com"><\/script>';
     const styleTag = `<style>${cssContent}<\/style>`;
     
     const assetInterceptorScript = `
@@ -1053,6 +1146,16 @@ function updatePreview() {
         window.onerror = function(message, source, lineno, colno, error) {
             window.parent.postMessage({ type: 'iframe_error', error: message + ' (Line: ' + lineno + ')' }, '*');
         };
+        
+        // SPA Router
+        document.addEventListener('click', (e) => {
+            const a = e.target.closest('a');
+            if (a && a.getAttribute('href') && a.getAttribute('href').endsWith('.html')) {
+                e.preventDefault();
+                const path = a.getAttribute('href');
+                window.parent.postMessage({ type: 'navigate', path: path }, '*');
+            }
+        });
     <\/script>`;
     
     const scriptTag = `<script>${jsContent}<\/script>`;
@@ -1068,6 +1171,7 @@ function updatePreview() {
         <head>
             ${threeScript}
             ${gltfLoaderScript}
+            ${tailwindScript}
             ${styleTag}
         </head>
         <body>
@@ -1095,6 +1199,12 @@ window.addEventListener('message', (event) => {
             </div>
         `;
         banner.classList.remove('hidden');
+    } else if (event.data.type === 'navigate') {
+        const project = getCurrentProject();
+        if (project) {
+            project.activePage = event.data.path;
+            updatePreview();
+        }
     }
 });
 
@@ -1323,4 +1433,5 @@ function renderFileTree() {
 }
 
 // Initial Load
+checkSharedProject();
 showView('landing');
