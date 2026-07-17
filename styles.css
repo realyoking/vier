@@ -61,6 +61,14 @@ h3 { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: var(--text-p
 
 .projects-section { width: 100%; max-width: 1000px; margin-top: 40px; }
 .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+.templates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 40px; }
+.template-card { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.2s; }
+.template-card:hover { border-color: var(--brand-primary); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+.template-icon { font-size: 32px; margin-bottom: 12px; }
+.template-card h4 { font-size: 16px; margin-bottom: 4px; color: var(--text-primary); }
+.template-card p { font-size: 13px; color: var(--text-tertiary); }
+
 .project-card { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all 0.2s; position: relative; }
 .project-card:hover { border-color: var(--brand-primary); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
 .project-thumb { height: 140px; background-color: var(--bg-tertiary); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.2); font-size: 48px; font-weight: 800; position: relative; }
@@ -102,6 +110,7 @@ h3 { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: var(--text-p
 .chat-bubble { padding: 12px 16px; border-radius: 12px; font-size: 13px; line-height: 1.5; max-width: 85%; word-wrap: break-word; }
 .chat-bubble.user { background: var(--bg-tertiary); border: 1px solid var(--border-primary); }
 .chat-bubble.ai { background: var(--bg-secondary); border: 1px solid var(--border-primary); }
+.chat-bubble img { max-width: 100%; border-radius: 8px; margin-top: 8px; display: block; }
 
 .file-card { background: var(--bg-tertiary); border: 1px solid var(--border-secondary); border-radius: 8px; padding: 12px; margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .file-card-info { display: flex; align-items: center; gap: 10px; }
@@ -136,8 +145,8 @@ h3 { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: var(--text-p
 .mode-btn.active { background: var(--bg-tertiary); color: var(--text-primary); }
 
 .workspace-panel { display: flex; flex-direction: column; background: var(--bg-secondary); height: 100%; overflow: hidden; }
-.workspace-tabs { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-primary); padding: 0 8px; height: 40px; flex-shrink: 0; }
-.tabs-left { display: flex; gap: 4px; }
+.workspace-tabs { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-primary); padding: 0 8px; height: 40px; flex-shrink: 0; gap: 8px; }
+.tabs-left { display: flex; gap: 4px; align-items: center; }
 .ws-tab { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: transparent; color: var(--text-tertiary); border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; }
 .ws-tab:hover { color: var(--text-secondary); }
 .ws-tab.active { color: var(--text-primary); border-bottom-color: var(--brand-primary); }
@@ -211,7 +220,6 @@ h3 { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: var(--text-p
 .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
 @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
 
-/* Agent Cursor */
 .agent-cursor { position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none; transition: top 0.5s ease, left 0.5s ease; }
 .agent-bubble { position: absolute; top: 20px; left: 20px; background: var(--brand-primary); color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.3); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 
